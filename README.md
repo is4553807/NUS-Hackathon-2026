@@ -2,7 +2,7 @@
 
 Conversational commerce prototype for the Visa x NUS Hackathon. The repository is a TypeScript monorepo that separates user-facing applications, transport adapters, shared contracts, and reusable domain packages so TIM and SANGYOON can develop in parallel.
 
-The repository foundation, shared transport validation, flexible Commerce catalog, Merchant/Catalog/Inventory/Pricing services, search, offers, orders, a safe mock Visa payment flow, and a live Merchant dashboard are implemented. Structured catalog write forms, remote MCP transport, and agent behavior remain in later phases.
+The repository foundation, shared transport validation, flexible Commerce catalog, Merchant/Catalog/Inventory/Pricing services, search, offers, orders, a safe mock Visa payment flow, a live Merchant dashboard, and the Commerce MCP server are implemented. Structured catalog write forms, CSV import execution, public MCP deployment, and consumer-agent behavior remain in later phases.
 
 ## Architecture
 
@@ -34,7 +34,7 @@ Consumer Web / Telegram             Merchant Form
 - Search and inventory tools are read operations. Order and payment tools enforce transaction-specific confirmation, saved-payment-method ownership, validation, and idempotency in the domain layer.
 - The Agent sees only a safe `paymentMethodId` or requests the user's default method. Provider credential references stay inside the Commerce backend; raw PAN and CVV are rejected at the API boundary.
 
-The MCP server currently uses local `stdio` transport. The final integration will also expose Streamable HTTP so OpenAI's Responses API can call the remote MCP server. OpenAI documents remote MCP servers as external tool providers reached through a `server_url`, with optional authentication and per-tool approval controls. See the [official OpenAI MCP and Connectors guide](https://developers.openai.com/api/docs/guides/tools-connectors-mcp).
+The MCP server exposes Streamable HTTP at `http://127.0.0.1:4100/mcp` by default and retains `stdio` for local MCP clients. OpenAI's Responses API can call it after the endpoint is deployed or securely tunneled to a public HTTPS `server_url`. Bearer authentication is optional on loopback and required by the application when binding to a non-loopback host. See the [official OpenAI MCP and Connectors guide](https://developers.openai.com/api/docs/guides/tools-connectors-mcp) and [TIM's integration handoff](./docs/tim-mcp-integration.md).
 
 ## Directory map
 
@@ -135,6 +135,8 @@ The Telegram process requires `TELEGRAM_BOT_TOKEN`. Without it, the application 
 
 With PostgreSQL, the API, and the web app running, open [http://localhost:3000/merchant](http://localhost:3000/merchant). The dashboard reads the seeded merchants, products, variants, inventory, and saved CSV mappings through the Commerce REST API. Use the merchant switcher in the top-right corner to inspect all six sample merchants; `Orchard Tech` is the default because it demonstrates the smartphone schema and reusable CSV mapping flow.
 
+With PostgreSQL and the MCP server running, its health check is available at [http://127.0.0.1:4100/health](http://127.0.0.1:4100/health). The `/mcp` route is a machine endpoint for MCP clients, not a browser page. `pnpm dev:mcp` automatically reads the repository `.env`; use `pnpm --filter @visa-commerce/mcp-server dev:stdio` when a local MCP client requires `stdio`.
+
 ## Quality commands
 
 ```bash
@@ -191,9 +193,25 @@ The structured Merchant form uses these implemented endpoints:
 
 Successful and failed requests use the shared response envelope defined in `packages/contracts`. Category IDs and variant IDs are stable API values; UI labels and arbitrary CSV headers are not used as database relationships.
 
+## Commerce MCP server
+
+The implemented MCP adapter exposes the same Commerce services as the consumer REST API without giving the Agent database credentials:
+
+| MCP tool             | Behavior                                                     |
+| -------------------- | ------------------------------------------------------------ |
+| `search_products`    | Find canonical catalog candidates for a complete intent      |
+| `get_product`        | Read public product and variant details                      |
+| `check_inventory`    | Check live availability for a requested variant and quantity |
+| `request_offers`     | Create transaction-ready, policy-compliant offers            |
+| `create_order`       | Create an idempotent order after explicit confirmation       |
+| `initiate_payment`   | Pay with a user-owned saved mock Visa payment method         |
+| `get_payment_status` | Read the latest safe payment result                          |
+
+Tool inputs and outputs are validated with the frozen shared Zod contracts. Commerce errors are returned as safe MCP errors; unexpected exceptions do not expose database or server details. For the OpenAI Responses API configuration, approval boundary, recommended call sequence, and environment variables, see [TIM's Commerce MCP integration handoff](./docs/tim-mcp-integration.md).
+
 ## Consumer discovery REST API
 
-TIM's Agent and the future MCP adapters use these implemented discovery operations:
+TIM's Agent can reach the same implemented Commerce services through MCP; the REST endpoints remain available for direct application integration:
 
 | Operation        | Method | Endpoint                   |
 | ---------------- | ------ | -------------------------- |
@@ -217,4 +235,4 @@ The Agent never receives a provider credential, PAN, or CVV. The database stores
 
 ## Current implementation status
 
-The Commerce database schema, hierarchical taxonomy, versioned category schemas, generic variants, reusable CSV mapping profiles, demo seed, Merchant REST API, live read-only Merchant dashboard, product discovery, inventory matching, deterministic pricing, time-limited Offer generation, explicit confirmation, idempotent Order creation, saved payment methods, and mock Visa authorization are implemented. Structured create/edit forms, CSV file parsing/import execution, agent behavior, identity-verification completion, and remote MCP transport remain in later feature phases.
+The Commerce database schema, hierarchical taxonomy, versioned category schemas, generic variants, reusable CSV mapping profiles, demo seed, Merchant REST API, live read-only Merchant dashboard, product discovery, inventory matching, deterministic pricing, time-limited Offer generation, explicit confirmation, idempotent Order creation, saved payment methods, mock Visa authorization, and Streamable HTTP/stdio MCP transports are implemented. Structured create/edit forms, CSV file parsing/import execution, public MCP deployment, consumer-agent behavior, and identity-verification completion remain in later feature phases.

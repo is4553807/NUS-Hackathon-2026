@@ -715,7 +715,7 @@ User sends a message
 - [x] Category schemas separate shoe, smartphone, service, and booking attributes.
 - [ ] All timestamps include a timezone.
 - [ ] All transport fields use `camelCase`.
-- [ ] MCP tool names exactly match this document.
+- [x] MCP tool names exactly match this document.
 - [ ] HTTP responses use the shared success and error envelopes.
 
 ### Offer

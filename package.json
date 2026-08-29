@@ -25,6 +25,7 @@
     "db:studio": "pnpm --filter @visa-commerce/db db:studio"
   },
   "devDependencies": {
+    "@modelcontextprotocol/sdk": "1.30.0",
     "@eslint/js": "10.0.1",
     "@next/eslint-plugin-next": "16.3.3",
     "@types/node": "26.4.0",

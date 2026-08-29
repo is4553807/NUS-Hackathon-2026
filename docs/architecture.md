@@ -75,6 +75,22 @@ The Commerce payment service is the state-machine authority. It validates confir
 
 See [Saved Payment and Agent Checkout](./payment-flow.md).
 
+## MCP transport boundary
+
+```text
+TIM's backend / local MCP client
+  -> Streamable HTTP or stdio
+  -> seven contract-frozen MCP tools
+  -> Commerce services
+  -> PostgreSQL
+```
+
+The MCP server is a thin transport adapter. It validates shared Zod inputs and outputs, converts domain errors into safe MCP responses, and never exposes database credentials, private pricing rules, saved payment credentials, PAN, or CVV. Streamable HTTP is stateless and supports optional Bearer authentication; the server refuses a non-loopback bind without an authentication token. The `stdio` transport remains available for local clients.
+
+Discovery, inventory, offer-generation, and status tools may run without application-level approval. `create_order` and `initiate_payment` must remain approval-gated in TIM's OpenAI configuration, and the Commerce domain independently requires `userConfirmed: true` before creating an order.
+
+See [TIM's Commerce MCP Integration](./tim-mcp-integration.md).
+
 ## Current phase
 
-The repository foundation, shared transport schemas, flexible catalog database, category/form APIs, CSV mapping profiles, Merchant REST adapters, product search, inventory matching, deterministic pricing, time-limited Offer generation, idempotent Order creation, saved payment methods, and the mock Visa payment state machine are implemented. CSV execution, the merchant UI, identity-verification completion, and remote MCP transport remain in later feature phases.
+The repository foundation, shared transport schemas, flexible catalog database, category/form APIs, CSV mapping profiles, Merchant REST adapters, Merchant dashboard, product search, inventory matching, deterministic pricing, time-limited Offer generation, idempotent Order creation, saved payment methods, mock Visa payment state machine, and Streamable HTTP/stdio Commerce MCP server are implemented. Structured catalog write forms, CSV import execution, identity-verification completion, public MCP deployment, and consumer-agent integration remain in later feature phases.
