@@ -1,3 +1,5 @@
+import { redirect } from "next/navigation";
+
 export default function MerchantPricingPage() {
-  return <main>Merchant Pricing - TODO</main>;
+  redirect("/merchant#catalog");
 }

@@ -204,6 +204,7 @@ const services = {
     },
   ]),
   listImportProfiles: vi.fn(async () => []),
+  listMerchants: vi.fn(async () => [merchant]),
   listMerchantProducts: vi.fn(async (requestedMerchantId: string) => {
     if (requestedMerchantId !== merchantId) {
       throw new CommerceError({
@@ -257,6 +258,19 @@ afterAll(async () => {
 });
 
 describe("Merchant REST API", () => {
+  it("lists merchants for the dashboard selector", async () => {
+    const response = await app.inject({
+      method: "GET",
+      url: "/v1/merchants",
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      success: true,
+      data: { merchants: [{ merchantId, name: merchant.name }] },
+    });
+  });
+
   it("creates a merchant through the shared success envelope", async () => {
     const response = await app.inject({
       method: "POST",

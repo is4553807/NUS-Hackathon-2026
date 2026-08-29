@@ -16,6 +16,11 @@ export function createMerchantsRoutes(
   services: CommerceApiServices,
 ): FastifyPluginAsync {
   return async (app) => {
+    app.get("/", async (_request, reply) => {
+      const merchants = await services.listMerchants();
+      return reply.send(successResponse({ merchants }));
+    });
+
     app.post("/", async (request, reply) => {
       const input = CreateMerchantBodySchema.parse(request.body);
       const merchant = await services.createMerchant(input);

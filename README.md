@@ -2,7 +2,7 @@
 
 Conversational commerce prototype for the Visa x NUS Hackathon. The repository is a TypeScript monorepo that separates user-facing applications, transport adapters, shared contracts, and reusable domain packages so TIM and SANGYOON can develop in parallel.
 
-The repository foundation, shared transport validation, flexible Commerce catalog, Merchant/Catalog/Inventory/Pricing services, search, offers, orders, and a safe mock Visa payment flow are implemented. The merchant UI, remote MCP transport, and agent behavior remain in later phases.
+The repository foundation, shared transport validation, flexible Commerce catalog, Merchant/Catalog/Inventory/Pricing services, search, offers, orders, a safe mock Visa payment flow, and a live Merchant dashboard are implemented. Structured catalog write forms, remote MCP transport, and agent behavior remain in later phases.
 
 ## Architecture
 
@@ -133,6 +133,8 @@ pnpm dev:telegram
 
 The Telegram process requires `TELEGRAM_BOT_TOKEN`. Without it, the application exits with a clear configuration message.
 
+With PostgreSQL, the API, and the web app running, open [http://localhost:3000/merchant](http://localhost:3000/merchant). The dashboard reads the seeded merchants, products, variants, inventory, and saved CSV mappings through the Commerce REST API. Use the merchant switcher in the top-right corner to inspect all six sample merchants; `Orchard Tech` is the default because it demonstrates the smartphone schema and reusable CSV mapping flow.
+
 ## Quality commands
 
 ```bash
@@ -177,6 +179,7 @@ The structured Merchant form uses these implemented endpoints:
 | ---------------------------- | ------- | -------------------------------------------- |
 | List catalog categories      | `GET`   | `/v1/categories`                             |
 | Get category form schema     | `GET`   | `/v1/categories/{categoryId}/schema`         |
+| List merchants               | `GET`   | `/v1/merchants`                              |
 | Create merchant              | `POST`  | `/v1/merchants`                              |
 | Create product with variants | `POST`  | `/v1/merchants/{merchantId}/products`        |
 | List merchant products       | `GET`   | `/v1/merchants/{merchantId}/products`        |
@@ -214,4 +217,4 @@ The Agent never receives a provider credential, PAN, or CVV. The database stores
 
 ## Current implementation status
 
-The Commerce database schema, hierarchical taxonomy, versioned category schemas, generic variants, reusable CSV mapping profiles, demo seed, Merchant REST API, product discovery, inventory matching, deterministic pricing, time-limited Offer generation, explicit confirmation, idempotent Order creation, saved payment methods, and mock Visa authorization are implemented. CSV file parsing/import execution, merchant UI generation, agent behavior, identity-verification completion, and remote MCP transport remain in later feature phases.
+The Commerce database schema, hierarchical taxonomy, versioned category schemas, generic variants, reusable CSV mapping profiles, demo seed, Merchant REST API, live read-only Merchant dashboard, product discovery, inventory matching, deterministic pricing, time-limited Offer generation, explicit confirmation, idempotent Order creation, saved payment methods, and mock Visa authorization are implemented. Structured create/edit forms, CSV file parsing/import execution, agent behavior, identity-verification completion, and remote MCP transport remain in later feature phases.

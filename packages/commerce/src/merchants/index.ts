@@ -77,6 +77,17 @@ export async function createMerchant(
   return toMerchantRecord(merchant);
 }
 
+export async function listMerchants(
+  dependencies: CommerceDependencies = {},
+): Promise<MerchantRecord[]> {
+  const database = getCommerceDatabase(dependencies);
+  const merchants = await database.merchant.findMany({
+    orderBy: [{ name: "asc" }, { createdAt: "asc" }],
+  });
+
+  return merchants.map(toMerchantRecord);
+}
+
 export async function getMerchant(
   merchantId: string,
   dependencies: CommerceDependencies = {},

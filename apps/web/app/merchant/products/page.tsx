@@ -1,3 +1,5 @@
+import { redirect } from "next/navigation";
+
 export default function MerchantProductsPage() {
-  return <main>Merchant Products - TODO</main>;
+  redirect("/merchant#catalog");
 }
