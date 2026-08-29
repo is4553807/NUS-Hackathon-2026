@@ -2,7 +2,6 @@ import {
   MerchantStatus as DatabaseMerchantStatus,
   type Prisma,
 } from "@visa-commerce/db";
-import type { ProductCategory } from "@visa-commerce/contracts";
 
 import { getCommerceDatabase, type CommerceDependencies } from "../database.js";
 import { throwNotFound } from "../errors.js";
@@ -12,7 +11,7 @@ export type MerchantStatus = "active" | "inactive" | "suspended";
 
 export type CreateMerchantInput = {
   name: string;
-  category?: ProductCategory | null;
+  category?: string | null;
   description?: string | null;
   currency?: "SGD";
   contactEmail?: string | null;

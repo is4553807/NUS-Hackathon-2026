@@ -1,12 +1,14 @@
 import { z } from "zod";
 
 import {
+  CategoryIdSchema,
   CurrencyCodeSchema,
   MoneySchema,
   ProductAttributesSchema,
   TimestampSchema,
   UuidSchema,
 } from "./common.js";
+import { CommerceDomainSchema } from "./user-intent.js";
 
 export const OfferStatusSchema = z.enum([
   "active",
@@ -23,6 +25,9 @@ export const OfferSchema = z
     merchantName: z.string().trim().min(1),
     productId: UuidSchema,
     productName: z.string().trim().min(1),
+    variantId: UuidSchema,
+    commerceDomain: CommerceDomainSchema,
+    categoryId: CategoryIdSchema,
     listedPrice: MoneySchema,
     offeredPrice: MoneySchema,
     currency: CurrencyCodeSchema,

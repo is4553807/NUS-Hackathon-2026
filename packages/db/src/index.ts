@@ -1,12 +1,16 @@
 export { getPrismaClient } from "./client.js";
 export {
+  AvailabilityModel,
+  BillingModel,
+  CatalogImportStatus,
+  CommerceDomain,
   DigitalDeliveryMethod,
   InventoryAvailability,
   MerchantStatus,
   OfferStatus,
   OrderStatus,
   Prisma,
-  ProductCategory,
+  ProductKind,
   ServiceDeliveryMode,
 } from "./generated/prisma/client.js";
 export type { PrismaClient } from "./generated/prisma/client.js";

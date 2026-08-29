@@ -133,7 +133,16 @@ export async function configurePricingPolicy(
   const database = getCommerceDatabase(dependencies);
   const product = await database.product.findUnique({
     where: { id: input.productId },
-    select: { merchantId: true, listedPrice: true },
+    select: {
+      merchantId: true,
+      basePrice: true,
+      variants: {
+        where: { active: true },
+        select: { listedPrice: true },
+        orderBy: { listedPrice: "asc" },
+        take: 1,
+      },
+    },
   });
 
   if (product === null) {
@@ -162,11 +171,17 @@ export async function configurePricingPolicy(
         : requirePercentage(input.maxDiscountPercent, "maxDiscountPercent");
     inventoryDiscountEnabled = input.inventoryDiscountEnabled ?? false;
 
-    if (minimumPrice > product.listedPrice.toNumber()) {
-      throwValidationError("minimumPrice must not exceed listedPrice.", {
-        minimumPrice,
-        listedPrice: product.listedPrice.toNumber(),
-      });
+    const lowestListedPrice =
+      product.variants[0]?.listedPrice.toNumber() ??
+      product.basePrice.toNumber();
+    if (minimumPrice > lowestListedPrice) {
+      throwValidationError(
+        "minimumPrice must not exceed the lowest active variant price.",
+        {
+          minimumPrice,
+          lowestListedPrice,
+        },
+      );
     }
   }
 

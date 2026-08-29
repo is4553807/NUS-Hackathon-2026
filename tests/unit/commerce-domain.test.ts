@@ -1,11 +1,12 @@
-import { InventoryAvailability } from "@visa-commerce/db";
+import { InventoryAvailability, ProductKind } from "@visa-commerce/db";
 import { describe, expect, it } from "vitest";
 
 import {
   calculateAvailableQuantity,
   deriveInventoryAvailability,
-  parseVariantKey,
   roundMoney,
+  validateCategoryAttributes,
+  validateImportMapping,
   variantMatchesAttributes,
 } from "../../packages/commerce/src/index.js";
 
@@ -28,23 +29,93 @@ describe("commerce inventory rules", () => {
   });
 
   it("matches requested attributes to a stored variant", () => {
-    const variantKey = "size=US 9;color=Black";
-
-    expect(parseVariantKey(variantKey)).toEqual({
+    const variantAttributes = {
       size: "US 9",
       color: "Black",
-    });
+    };
     expect(
-      variantMatchesAttributes(variantKey, {
+      variantMatchesAttributes(variantAttributes, {
         size: "us 9",
       }),
     ).toBe(true);
     expect(
-      variantMatchesAttributes(variantKey, {
+      variantMatchesAttributes(variantAttributes, {
         size: "US 8",
         color: "Black",
       }),
     ).toBe(false);
+  });
+
+  it("validates category-defined product and variant fields", () => {
+    const schema = {
+      attributes: {
+        model: { type: "string", scope: "product", required: true },
+        storage: { type: "string", scope: "variant", required: true },
+      },
+    };
+
+    expect(() =>
+      validateCategoryAttributes({
+        schema,
+        productAttributes: { model: "iPhone 16 Pro" },
+        variants: [{ attributes: { storage: "256GB", color: "Black" } }],
+      }),
+    ).not.toThrow();
+  });
+
+  it("accepts different CSV headers only when they map to canonical fields", () => {
+    expect(() =>
+      validateImportMapping({
+        sourceHeaders: [
+          "item_title",
+          "unit_price_sgd",
+          "item_type",
+          "model_name",
+          "capacity",
+          "color_name",
+        ],
+        columnMapping: {
+          item_title: "product.name",
+          unit_price_sgd: "variant.listedPrice",
+          item_type: "product.attributes.productType",
+          model_name: "product.attributes.model",
+          capacity: "variant.attributes.storage",
+          color_name: "variant.attributes.color",
+        },
+        attributeSchema: {
+          attributes: {
+            productType: {
+              type: "string",
+              scope: "product",
+              required: true,
+            },
+            model: { type: "string", scope: "product", required: true },
+            storage: { type: "string", scope: "variant", required: true },
+            color: { type: "string", scope: "variant", required: true },
+          },
+        },
+        productKind: ProductKind.PHYSICAL_GOOD,
+      }),
+    ).not.toThrow();
+  });
+
+  it("rejects merchant CSV fields that bypass the canonical category schema", () => {
+    expect(() =>
+      validateImportMapping({
+        sourceHeaders: ["item_title", "price", "shoe_size"],
+        columnMapping: {
+          item_title: "product.name",
+          price: "variant.listedPrice",
+          shoe_size: "merchant.custom_size",
+        },
+        attributeSchema: {
+          attributes: {
+            size: { type: "string", scope: "variant", required: true },
+          },
+        },
+        productKind: ProductKind.PHYSICAL_GOOD,
+      }),
+    ).toThrow("canonical catalog paths");
   });
 });
 

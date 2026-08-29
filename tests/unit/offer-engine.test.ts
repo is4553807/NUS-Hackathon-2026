@@ -78,7 +78,7 @@ describe("offer matching and delivery", () => {
     expect(
       assessDelivery(
         {
-          category: "physical_goods",
+          productKind: "physical_good",
           physicalShippingRequired: true,
           bookingStartsAt: null,
         },
@@ -92,7 +92,7 @@ describe("offer matching and delivery", () => {
     expect(
       assessDelivery(
         {
-          category: "physical_goods",
+          productKind: "physical_good",
           physicalShippingRequired: true,
           bookingStartsAt: null,
         },

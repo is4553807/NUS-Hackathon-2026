@@ -27,15 +27,15 @@ export type DeliveryAssessment = {
 export function assessDelivery(
   candidate: Pick<
     MatchedProductCandidate,
-    "category" | "physicalShippingRequired" | "bookingStartsAt"
+    "productKind" | "physicalShippingRequired" | "bookingStartsAt"
   >,
   intent: Pick<UserIntent, "deliveryLocation" | "deliveryDeadline">,
   now: Date,
 ): DeliveryAssessment {
   let estimate: Date | null = null;
 
-  switch (candidate.category) {
-    case "physical_goods":
+  switch (candidate.productKind) {
+    case "physical_good":
       if (
         candidate.physicalShippingRequired === true &&
         intent.deliveryLocation === null
@@ -49,13 +49,13 @@ export function assessDelivery(
             : PICKUP_READY_MS),
       );
       break;
-    case "digital_products":
+    case "digital_product":
       estimate = new Date(now);
       break;
-    case "services":
+    case "service":
       estimate = null;
       break;
-    case "bookings_experiences":
+    case "booking":
       estimate = candidate.bookingStartsAt;
       if (estimate === null || estimate <= now) {
         return { available: false, estimate };
@@ -141,7 +141,7 @@ export async function requestOffers(
           intentId: intent.intentId,
           merchantId: candidate.merchantId,
           productId: candidate.productId,
-          variantKey: candidate.variantKey,
+          variantId: candidate.variantId,
           attributes: candidate.matchedAttributes as Prisma.InputJsonObject,
           listedPrice: candidate.listedPrice,
           offeredPrice: readyOffer.offeredPrice,
@@ -163,6 +163,9 @@ export async function requestOffers(
           merchantName: candidate.merchantName,
           productId: created.productId,
           productName: candidate.productName,
+          variantId: created.variantId,
+          commerceDomain: candidate.commerceDomain,
+          categoryId: candidate.categoryId,
           listedPrice: created.listedPrice.toNumber(),
           offeredPrice: created.offeredPrice.toNumber(),
           currency: "SGD",

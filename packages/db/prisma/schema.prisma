@@ -23,13 +23,50 @@ enum InventoryAvailability {
   @@map("inventory_availability")
 }
 
-enum ProductCategory {
-  PHYSICAL_GOODS       @map("physical_goods")
-  DIGITAL_PRODUCTS     @map("digital_products")
-  SERVICES             @map("services")
-  BOOKINGS_EXPERIENCES @map("bookings_experiences")
+enum CommerceDomain {
+  RETAIL_GOODS           @map("retail_goods")
+  SERVICES_SUBSCRIPTIONS @map("services_subscriptions")
+  BOOKINGS               @map("bookings")
 
-  @@map("product_category")
+  @@map("commerce_domain")
+}
+
+enum ProductKind {
+  PHYSICAL_GOOD   @map("physical_good")
+  DIGITAL_PRODUCT @map("digital_product")
+  SERVICE         @map("service")
+  BOOKING         @map("booking")
+
+  @@map("product_kind")
+}
+
+enum BillingModel {
+  ONE_TIME    @map("one_time")
+  RECURRING   @map("recurring")
+  USAGE_BASED @map("usage_based")
+  DEPOSIT     @map("deposit")
+
+  @@map("billing_model")
+}
+
+enum AvailabilityModel {
+  STOCK     @map("stock")
+  UNLIMITED @map("unlimited")
+  TIME_SLOT @map("time_slot")
+  CAPACITY  @map("capacity")
+  SEAT      @map("seat")
+
+  @@map("availability_model")
+}
+
+enum CatalogImportStatus {
+  PENDING    @map("pending")
+  VALIDATING @map("validating")
+  READY      @map("ready")
+  IMPORTED   @map("imported")
+  FAILED     @map("failed")
+
+  @@map("catalog_import_status")
 }
 
 enum DigitalDeliveryMethod {
@@ -90,56 +127,104 @@ model Merchant {
   updatedAt    DateTime       @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   products        Product[]
+  productVariants ProductVariant[]
   inventory       Inventory[]
   pricingPolicies PricingPolicy[]
   offers          Offer[]
   orders          Order[]
+  importProfiles  MerchantImportProfile[]
+  importJobs      CatalogImportJob[]
 
   @@index([category, status])
   @@map("merchants")
 }
 
+model Category {
+  id                       String            @id @db.VarChar(180)
+  parentId                 String?           @map("parent_id") @db.VarChar(180)
+  domain                   CommerceDomain
+  productKind              ProductKind       @map("product_kind")
+  slug                     String            @db.VarChar(100)
+  name                     String            @db.VarChar(255)
+  level                    Int
+  aliases                  String[]          @default([])
+  defaultBillingModel      BillingModel      @default(ONE_TIME) @map("default_billing_model")
+  defaultAvailabilityModel AvailabilityModel @default(STOCK) @map("default_availability_model")
+  active                   Boolean           @default(true)
+  createdAt                DateTime          @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt                DateTime          @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  parent         Category?               @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: Restrict)
+  children       Category[]              @relation("CategoryHierarchy")
+  schemas        CategorySchema[]
+  products       Product[]
+  importProfiles MerchantImportProfile[]
+
+  @@unique([parentId, slug])
+  @@index([domain, active])
+  @@index([parentId, active])
+  @@map("categories")
+}
+
+model CategorySchema {
+  id              String   @id @default(uuid()) @db.Uuid
+  categoryId      String   @map("category_id") @db.VarChar(180)
+  version         String   @db.VarChar(30)
+  attributeSchema Json     @map("attribute_schema") @db.JsonB
+  active          Boolean  @default(true)
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([categoryId, version])
+  @@index([categoryId, active])
+  @@map("category_schemas")
+}
+
 model Product {
-  id          String          @id @default(uuid()) @db.Uuid
-  merchantId  String          @map("merchant_id") @db.Uuid
-  name        String          @db.VarChar(255)
-  description String?
-  category    ProductCategory
-  brand       String?         @db.VarChar(255)
-  listedPrice Decimal         @map("listed_price") @db.Decimal(12, 2)
-  currency    String          @default("SGD") @db.Char(3)
-  imageUrl    String?         @map("image_url")
-  active      Boolean         @default(true)
-  createdAt   DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt   DateTime        @updatedAt @map("updated_at") @db.Timestamptz(3)
+  id                String            @id @default(uuid()) @db.Uuid
+  merchantId        String            @map("merchant_id") @db.Uuid
+  externalId        String?           @map("external_id") @db.VarChar(255)
+  categoryId        String            @map("category_id") @db.VarChar(180)
+  productKind       ProductKind       @map("product_kind")
+  billingModel      BillingModel      @default(ONE_TIME) @map("billing_model")
+  availabilityModel AvailabilityModel @default(STOCK) @map("availability_model")
+  name              String            @db.VarChar(255)
+  description       String?
+  brand             String?           @db.VarChar(255)
+  basePrice         Decimal           @map("base_price") @db.Decimal(12, 2)
+  currency          String            @default("SGD") @db.Char(3)
+  imageUrl          String?           @map("image_url")
+  attributes        Json              @default("{}") @db.JsonB
+  active            Boolean           @default(true)
+  createdAt         DateTime          @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt         DateTime          @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   merchant                 Merchant                  @relation(fields: [merchantId], references: [id], onDelete: Restrict)
+  category                 Category                  @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   physicalGoodDetails      PhysicalGoodDetails?
   digitalProductDetails    DigitalProductDetails?
   serviceDetails           ServiceDetails?
   bookingExperienceDetails BookingExperienceDetails?
-  inventory                Inventory[]
+  variants                 ProductVariant[]
   pricingPolicy            PricingPolicy?
   offers                   Offer[]
   orders                   Order[]
 
+  @@unique([merchantId, externalId])
   @@index([merchantId, active])
-  @@index([category, brand, active])
+  @@index([categoryId, brand, active])
   @@map("products")
 }
 
 model PhysicalGoodDetails {
   productId        String   @id @map("product_id") @db.Uuid
-  sku              String?  @unique @db.VarChar(100)
-  sizeOptions      String[] @default([]) @map("size_options")
-  colorOptions     String[] @default([]) @map("color_options")
-  material         String?  @db.VarChar(255)
   weightGrams      Int?     @map("weight_grams")
   lengthCm         Decimal? @map("length_cm") @db.Decimal(8, 2)
   widthCm          Decimal? @map("width_cm") @db.Decimal(8, 2)
   heightCm         Decimal? @map("height_cm") @db.Decimal(8, 2)
   shippingRequired Boolean  @default(true) @map("shipping_required")
-  metadata         Json?    @db.JsonB
   createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
@@ -157,7 +242,6 @@ model DigitalProductDetails {
   licenseRequired    Boolean               @default(false) @map("license_required")
   accessDurationDays Int?                  @map("access_duration_days")
   fulfillmentUrl     String?               @map("fulfillment_url")
-  metadata           Json?                 @db.JsonB
   createdAt          DateTime              @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt          DateTime              @updatedAt @map("updated_at") @db.Timestamptz(3)
 
@@ -175,7 +259,6 @@ model ServiceDetails {
   serviceAreas    String[]            @default([]) @map("service_areas")
   providerName    String?             @map("provider_name") @db.VarChar(255)
   bookingRequired Boolean             @default(true) @map("booking_required")
-  metadata        Json?               @db.JsonB
   createdAt       DateTime            @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt       DateTime            @updatedAt @map("updated_at") @db.Timestamptz(3)
 
@@ -195,7 +278,6 @@ model BookingExperienceDetails {
   capacity        Int
   minParticipants Int      @default(1) @map("min_participants")
   meetingPoint    String?  @map("meeting_point")
-  metadata        Json?    @db.JsonB
   createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
@@ -205,20 +287,43 @@ model BookingExperienceDetails {
   @@map("booking_experience_details")
 }
 
+model ProductVariant {
+  id          String   @id @default(uuid()) @db.Uuid
+  merchantId  String   @map("merchant_id") @db.Uuid
+  productId   String   @map("product_id") @db.Uuid
+  externalId  String?  @map("external_id") @db.VarChar(255)
+  sku         String?  @db.VarChar(150)
+  name        String?  @db.VarChar(255)
+  attributes  Json     @default("{}") @db.JsonB
+  listedPrice Decimal  @map("listed_price") @db.Decimal(12, 2)
+  imageUrl    String?  @map("image_url")
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  merchant  Merchant   @relation(fields: [merchantId], references: [id], onDelete: Restrict)
+  product   Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+  inventory Inventory?
+  offers    Offer[]
+
+  @@unique([merchantId, sku])
+  @@unique([merchantId, externalId])
+  @@index([productId, active])
+  @@map("product_variants")
+}
+
 model Inventory {
   id                String                @id @default(uuid()) @db.Uuid
   merchantId        String                @map("merchant_id") @db.Uuid
-  productId         String                @map("product_id") @db.Uuid
-  variantKey        String                @map("variant_key") @db.VarChar(255)
+  variantId         String                @unique @map("variant_id") @db.Uuid
   quantityAvailable Int                   @default(0) @map("quantity_available")
   quantityReserved  Int                   @default(0) @map("quantity_reserved")
   availability      InventoryAvailability @default(IN_STOCK)
   updatedAt         DateTime              @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  merchant Merchant @relation(fields: [merchantId], references: [id], onDelete: Restrict)
-  product  Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  merchant Merchant       @relation(fields: [merchantId], references: [id], onDelete: Restrict)
+  variant  ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
 
-  @@unique([productId, variantKey])
   @@index([merchantId, availability])
   @@map("inventory")
 }
@@ -247,7 +352,7 @@ model Offer {
   intentId          String      @map("intent_id") @db.Uuid
   merchantId        String      @map("merchant_id") @db.Uuid
   productId         String      @map("product_id") @db.Uuid
-  variantKey        String      @map("variant_key") @db.VarChar(255)
+  variantId         String      @map("variant_id") @db.Uuid
   attributes        Json        @db.JsonB
   listedPrice       Decimal     @map("listed_price") @db.Decimal(12, 2)
   offeredPrice      Decimal     @map("offered_price") @db.Decimal(12, 2)
@@ -260,15 +365,61 @@ model Offer {
   expiresAt         DateTime    @map("expires_at") @db.Timestamptz(3)
   createdAt         DateTime    @default(now()) @map("created_at") @db.Timestamptz(3)
 
-  merchant Merchant @relation(fields: [merchantId], references: [id], onDelete: Restrict)
-  product  Product  @relation(fields: [productId], references: [id], onDelete: Restrict)
+  merchant Merchant       @relation(fields: [merchantId], references: [id], onDelete: Restrict)
+  product  Product        @relation(fields: [productId], references: [id], onDelete: Restrict)
+  variant  ProductVariant @relation(fields: [variantId], references: [id], onDelete: Restrict)
   order    Order?
 
   // TODO(TIM integration): add the UserIntent relation after TIM's model lands.
   @@index([intentId, status, expiresAt])
   @@index([merchantId, status])
   @@index([productId, status])
+  @@index([variantId, status])
   @@map("offers")
+}
+
+model MerchantImportProfile {
+  id                 String   @id @default(uuid()) @db.Uuid
+  merchantId         String   @map("merchant_id") @db.Uuid
+  categoryId         String   @map("category_id") @db.VarChar(180)
+  name               String   @db.VarChar(255)
+  schemaVersion      String   @map("schema_version") @db.VarChar(30)
+  sourceHeaders      Json     @map("source_headers") @db.JsonB
+  columnMapping      Json     @map("column_mapping") @db.JsonB
+  normalizationRules Json?    @map("normalization_rules") @db.JsonB
+  active             Boolean  @default(true)
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt          DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  merchant Merchant           @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  category Category           @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  jobs     CatalogImportJob[]
+
+  @@unique([merchantId, name])
+  @@index([merchantId, active])
+  @@index([categoryId, active])
+  @@map("merchant_import_profiles")
+}
+
+model CatalogImportJob {
+  id               String              @id @default(uuid()) @db.Uuid
+  merchantId       String              @map("merchant_id") @db.Uuid
+  profileId        String?             @map("profile_id") @db.Uuid
+  fileName         String              @map("file_name") @db.VarChar(255)
+  sourceHeaders    Json                @map("source_headers") @db.JsonB
+  status           CatalogImportStatus @default(PENDING)
+  totalRows        Int                 @default(0) @map("total_rows")
+  acceptedRows     Int                 @default(0) @map("accepted_rows")
+  rejectedRows     Int                 @default(0) @map("rejected_rows")
+  validationErrors Json?               @map("validation_errors") @db.JsonB
+  createdAt        DateTime            @default(now()) @map("created_at") @db.Timestamptz(3)
+  completedAt      DateTime?           @map("completed_at") @db.Timestamptz(3)
+
+  merchant Merchant               @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  profile  MerchantImportProfile? @relation(fields: [profileId], references: [id], onDelete: SetNull)
+
+  @@index([merchantId, status, createdAt])
+  @@map("catalog_import_jobs")
 }
 
 model Order {

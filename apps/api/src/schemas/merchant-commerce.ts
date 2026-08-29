@@ -1,7 +1,8 @@
 import type { JsonObject, JsonValue } from "@visa-commerce/commerce";
 import {
+  CategoryIdSchema,
   CurrencyCodeSchema,
-  ProductCategorySchema,
+  ProductAttributesSchema,
   TimestampSchema,
   UuidSchema,
 } from "@visa-commerce/contracts";
@@ -34,50 +35,50 @@ export const ProductIdParamsSchema = z
   .object({ productId: UuidSchema })
   .strict();
 
-export const InventoryParamsSchema = z
-  .object({
-    productId: UuidSchema,
-    variantKey: z.string().trim().min(1),
-  })
+export const VariantIdParamsSchema = z
+  .object({ variantId: UuidSchema })
+  .strict();
+
+export const CategoryIdParamsSchema = z
+  .object({ categoryId: CategoryIdSchema })
   .strict();
 
 export const CreateMerchantBodySchema = z
   .object({
     name: z.string().trim().min(1).max(255),
-    category: ProductCategorySchema.nullable().optional(),
+    category: CategoryIdSchema.nullable().optional(),
     description: NullableTextSchema,
     currency: CurrencyCodeSchema.optional(),
     contactEmail: z.string().email().nullable().optional(),
   })
   .strict();
 
-const ProductBaseSchema = z.object({
-  name: z.string().trim().min(1).max(255),
-  description: NullableTextSchema,
-  brand: NullableTextSchema,
-  listedPrice: z.number().finite().nonnegative(),
-  currency: CurrencyCodeSchema.optional(),
-  imageUrl: NullableUrlSchema,
-  active: z.boolean().optional(),
-});
+const ProductVariantSchema = z
+  .object({
+    externalId: NullableTextSchema,
+    sku: NullableTextSchema,
+    name: NullableTextSchema,
+    attributes: ProductAttributesSchema,
+    listedPrice: z.number().finite().nonnegative().optional(),
+    imageUrl: NullableUrlSchema,
+    active: z.boolean().optional(),
+  })
+  .strict();
 
 const PhysicalGoodDetailsSchema = z
   .object({
-    sku: NullableTextSchema,
-    sizeOptions: z.array(z.string().trim().min(1)).optional(),
-    colorOptions: z.array(z.string().trim().min(1)).optional(),
-    material: NullableTextSchema,
+    type: z.literal("physical_good"),
     weightGrams: z.number().int().nonnegative().nullable().optional(),
     lengthCm: z.number().finite().nonnegative().nullable().optional(),
     widthCm: z.number().finite().nonnegative().nullable().optional(),
     heightCm: z.number().finite().nonnegative().nullable().optional(),
     shippingRequired: z.boolean().optional(),
-    metadata: JsonObjectSchema.optional(),
   })
   .strict();
 
 const DigitalProductDetailsSchema = z
   .object({
+    type: z.literal("digital_product"),
     deliveryMethod: z.enum([
       "download",
       "license_key",
@@ -90,12 +91,12 @@ const DigitalProductDetailsSchema = z
     licenseRequired: z.boolean().optional(),
     accessDurationDays: z.number().int().positive().nullable().optional(),
     fulfillmentUrl: NullableUrlSchema,
-    metadata: JsonObjectSchema.optional(),
   })
   .strict();
 
 const ServiceDetailsSchema = z
   .object({
+    type: z.literal("service"),
     serviceType: z.string().trim().min(1).max(150),
     deliveryMode: z.enum(["in_person", "remote", "hybrid"]),
     durationMinutes: z.number().int().positive(),
@@ -103,12 +104,12 @@ const ServiceDetailsSchema = z
     serviceAreas: z.array(z.string().trim().min(1)).optional(),
     providerName: NullableTextSchema,
     bookingRequired: z.boolean().optional(),
-    metadata: JsonObjectSchema.optional(),
   })
   .strict();
 
 const BookingExperienceDetailsSchema = z
   .object({
+    type: z.literal("booking"),
     experienceType: NullableTextSchema,
     destination: z.string().trim().min(1).max(255),
     venue: NullableTextSchema,
@@ -118,36 +119,46 @@ const BookingExperienceDetailsSchema = z
     capacity: z.number().int().positive(),
     minParticipants: z.number().int().positive().optional(),
     meetingPoint: NullableTextSchema,
-    metadata: JsonObjectSchema.optional(),
   })
   .strict();
 
-export const CreateProductBodySchema = z.discriminatedUnion("category", [
-  ProductBaseSchema.extend({
-    category: z.literal("physical_goods"),
-    details: PhysicalGoodDetailsSchema,
-  }).strict(),
-  ProductBaseSchema.extend({
-    category: z.literal("digital_products"),
-    details: DigitalProductDetailsSchema,
-  }).strict(),
-  ProductBaseSchema.extend({
-    category: z.literal("services"),
-    details: ServiceDetailsSchema,
-  }).strict(),
-  ProductBaseSchema.extend({
-    category: z.literal("bookings_experiences"),
-    details: BookingExperienceDetailsSchema,
-  }).strict(),
-]);
+export const CreateProductBodySchema = z
+  .object({
+    externalId: NullableTextSchema,
+    categoryId: CategoryIdSchema,
+    billingModel: z
+      .enum(["one_time", "recurring", "usage_based", "deposit"])
+      .optional(),
+    availabilityModel: z
+      .enum(["stock", "unlimited", "time_slot", "capacity", "seat"])
+      .optional(),
+    name: z.string().trim().min(1).max(255),
+    description: NullableTextSchema,
+    brand: NullableTextSchema,
+    basePrice: z.number().finite().nonnegative(),
+    currency: CurrencyCodeSchema.optional(),
+    imageUrl: NullableUrlSchema,
+    attributes: ProductAttributesSchema,
+    variants: z.array(ProductVariantSchema).min(1),
+    details: z.discriminatedUnion("type", [
+      PhysicalGoodDetailsSchema,
+      DigitalProductDetailsSchema,
+      ServiceDetailsSchema,
+      BookingExperienceDetailsSchema,
+    ]),
+    active: z.boolean().optional(),
+  })
+  .strict();
 
 export const UpdateProductBodySchema = z
   .object({
+    externalId: NullableTextSchema,
     name: z.string().trim().min(1).max(255).optional(),
     description: NullableTextSchema,
     brand: NullableTextSchema,
-    listedPrice: z.number().finite().nonnegative().optional(),
+    basePrice: z.number().finite().nonnegative().optional(),
     imageUrl: NullableUrlSchema,
+    attributes: ProductAttributesSchema.optional(),
     active: z.boolean().optional(),
   })
   .strict();
@@ -172,5 +183,16 @@ export const ConfigurePricingPolicyBodySchema = z
       .optional(),
     inventoryDiscountEnabled: z.boolean().optional(),
     rules: JsonObjectSchema.optional(),
+  })
+  .strict();
+
+export const SaveImportProfileBodySchema = z
+  .object({
+    categoryId: CategoryIdSchema,
+    name: z.string().trim().min(1).max(255),
+    schemaVersion: z.string().trim().min(1).max(30),
+    sourceHeaders: z.array(z.string().trim().min(1)).min(1),
+    columnMapping: z.record(z.string().trim().min(1), z.string().trim().min(1)),
+    normalizationRules: JsonObjectSchema.nullable().optional(),
   })
   .strict();

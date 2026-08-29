@@ -1,6 +1,7 @@
 import Fastify, { type FastifyInstance } from "fastify";
 
 import { registerApiErrorHandler } from "./http/error-handler.js";
+import { createCategoriesRoutes } from "./routes/categories.js";
 import { healthRoutes } from "./routes/health.js";
 import { intentsRoutes } from "./routes/intents.js";
 import {
@@ -38,11 +39,14 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
   void app.register(createMerchantsRoutes(commerceServices), {
     prefix: "/v1/merchants",
   });
+  void app.register(createCategoriesRoutes(commerceServices), {
+    prefix: "/v1/categories",
+  });
   void app.register(createProductsRoutes(commerceServices), {
     prefix: "/v1/products",
   });
   void app.register(createInventoryRoutes(commerceServices), {
-    prefix: "/v1/products",
+    prefix: "/v1/variants",
   });
   void app.register(createPricingRoutes(commerceServices), {
     prefix: "/v1/products",

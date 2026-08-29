@@ -12,7 +12,7 @@ const intentId = "4f7a347c-3f30-4db0-9f85-3b6e9f182116";
 const merchant = {
   merchantId,
   name: "NUS Sneaker Hub",
-  category: "physical_goods",
+  category: "retail_goods.apparel.shoes",
   description: null,
   currency: "SGD" as const,
   contactEmail: "merchant@example.com",
@@ -25,19 +25,23 @@ const product = {
   productId,
   merchantId,
   merchantName: merchant.name,
+  externalId: "NSH-GTC3",
   name: "Nike GT Cut 3",
   description: "Basketball shoes",
-  category: "physical_goods" as const,
+  commerceDomain: "retail_goods" as const,
+  categoryId: "retail_goods.apparel.shoes",
+  categoryName: "Shoes",
+  productKind: "physical_good" as const,
+  billingModel: "one_time" as const,
+  availabilityModel: "stock" as const,
   brand: "Nike",
-  listedPrice: 195,
+  basePrice: 195,
   currency: "SGD" as const,
   imageUrl: null,
   active: true,
-  details: {
-    sku: "NSH-GTC3-BLK",
-    sizeOptions: ["US 9"],
-    colorOptions: ["Black"],
-  },
+  attributes: { productType: "basketball_shoes" },
+  details: { type: "physical_good", shippingRequired: true },
+  variants: [],
   createdAt: timestamp,
   updatedAt: timestamp,
 };
@@ -46,7 +50,9 @@ const inventory = {
   inventoryId: "b1111111-1111-4111-8111-111111111111",
   merchantId,
   productId,
-  variantKey: "size=US 9;color=Black",
+  variantId: "b1111111-1111-4111-8111-111111111111",
+  sku: "NSH-GTC3-US9-BLK",
+  attributes: { size: "US 9", color: "Black" },
   quantityAvailable: 10,
   quantityReserved: 1,
   quantityRemaining: 9,
@@ -74,15 +80,20 @@ const publicProduct = {
   productName: product.name,
   description: product.description,
   brand: product.brand,
-  category: product.category,
-  listedPrice: product.listedPrice,
+  commerceDomain: product.commerceDomain,
+  categoryId: product.categoryId,
+  categoryName: product.categoryName,
+  basePrice: product.basePrice,
   currency: product.currency,
   imageUrl: null,
   attributes: { productType: "basketball_shoes" },
   variants: [
     {
-      variantKey: inventory.variantKey,
+      variantId: inventory.variantId,
+      sku: inventory.sku,
+      name: "US 9 / Black",
       attributes: { size: "US 9", color: "Black" },
+      listedPrice: 195,
       quantityAvailable: inventory.quantityRemaining,
     },
   ],
@@ -90,7 +101,9 @@ const publicProduct = {
 
 const intent = {
   intentId,
-  category: "physical_goods" as const,
+  query: "Nike basketball shoes",
+  commerceDomain: "retail_goods" as const,
+  categoryId: "retail_goods.apparel.shoes",
   budgetMax: 180,
   currency: "SGD" as const,
   quantity: 1,
@@ -107,6 +120,9 @@ const offer = {
   merchantName: merchant.name,
   productId,
   productName: product.name,
+  variantId: inventory.variantId,
+  commerceDomain: product.commerceDomain,
+  categoryId: product.categoryId,
   listedPrice: 195,
   offeredPrice: 175,
   currency: "SGD" as const,
@@ -139,13 +155,40 @@ const services = {
   checkInventory: vi.fn(async () => ({
     available: true,
     quantityAvailable: 25,
-    variantKey: inventory.variantKey,
+    variantId: inventory.variantId,
     checkedAt: timestamp,
   })),
   createMerchant: vi.fn(async () => merchant),
   createOrder: vi.fn(async () => order),
   createProduct: vi.fn(async () => product),
   getPublicProduct: vi.fn(async () => publicProduct),
+  getCategorySchema: vi.fn(async () => ({
+    categoryId: product.categoryId,
+    parentId: "retail_goods.apparel",
+    commerceDomain: "retail_goods" as const,
+    productKind: "physical_good" as const,
+    slug: "shoes",
+    name: "Shoes",
+    level: 2,
+    aliases: ["footwear"],
+    active: true,
+    schemaVersion: "1.0",
+    attributeSchema: { attributes: { size: { type: "string" } } },
+  })),
+  listCategories: vi.fn(async () => [
+    {
+      categoryId: product.categoryId,
+      parentId: "retail_goods.apparel",
+      commerceDomain: "retail_goods" as const,
+      productKind: "physical_good" as const,
+      slug: "shoes",
+      name: "Shoes",
+      level: 2,
+      aliases: ["footwear"],
+      active: true,
+    },
+  ]),
+  listImportProfiles: vi.fn(async () => []),
   listMerchantProducts: vi.fn(async (requestedMerchantId: string) => {
     if (requestedMerchantId !== merchantId) {
       throw new CommerceError({
@@ -168,12 +211,22 @@ const services = {
         merchantName: merchant.name,
         productName: product.name,
         brand: product.brand,
-        category: product.category,
-        listedPrice: product.listedPrice,
+        commerceDomain: product.commerceDomain,
+        categoryId: product.categoryId,
+        variantId: inventory.variantId,
+        listedPrice: product.basePrice,
         currency: product.currency,
         matchedAttributes: { size: "US 9", color: "Black" },
       },
     ],
+  })),
+  saveImportProfile: vi.fn(async (input) => ({
+    importProfileId: "f6666666-6666-4666-8666-666666666666",
+    ...input,
+    normalizationRules: input.normalizationRules ?? null,
+    active: true,
+    createdAt: timestamp,
+    updatedAt: timestamp,
   })),
 } satisfies CommerceApiServices;
 
@@ -194,7 +247,7 @@ describe("Merchant REST API", () => {
       url: "/v1/merchants",
       payload: {
         name: merchant.name,
-        category: "physical_goods",
+        category: "retail_goods.apparel.shoes",
         contactEmail: merchant.contactEmail,
       },
     });
@@ -224,48 +277,79 @@ describe("Merchant REST API", () => {
 
   it.each([
     [
-      "physical_goods",
+      "retail_goods.apparel.shoes",
+      { productType: "basketball_shoes" },
       {
-        sku: "NSH-GTC3-BLK",
-        sizeOptions: ["US 9"],
-        colorOptions: ["Black"],
+        type: "physical_good",
+        shippingRequired: true,
       },
+      { size: "US 9", color: "Black" },
     ],
-    ["digital_products", { deliveryMethod: "download", fileFormat: "PDF" }],
     [
-      "services",
+      "services_subscriptions.digital_products",
+      { productType: "learning_bundle" },
       {
+        type: "digital_product",
+        deliveryMethod: "download",
+        fileFormat: "PDF",
+      },
+      { license: "individual" },
+    ],
+    [
+      "services_subscriptions.professional_services",
+      { serviceType: "career_coaching" },
+      {
+        type: "service",
         serviceType: "career_coaching",
         deliveryMode: "remote",
         durationMinutes: 60,
       },
+      { mode: "remote", durationMinutes: 60 },
     ],
     [
-      "bookings_experiences",
+      "bookings.activities",
+      { experienceType: "outdoor_activity", destination: "Sentosa" },
       {
+        type: "booking",
         destination: "Sentosa, Singapore",
         startsAt: "2026-09-05T17:30:00+08:00",
         endsAt: "2026-09-05T19:30:00+08:00",
         capacity: 12,
       },
+      { date: "2026-09-05", time: "17:30" },
     ],
-  ])("validates and creates a %s product", async (category, details) => {
-    const response = await app.inject({
-      method: "POST",
-      url: `/v1/merchants/${merchantId}/products`,
-      payload: {
-        name: product.name,
-        category,
-        listedPrice: 195,
-        details,
-      },
-    });
+  ])(
+    "validates and creates a product in %s",
+    async (categoryId, attributes, details, variantAttributes) => {
+      const response = await app.inject({
+        method: "POST",
+        url: `/v1/merchants/${merchantId}/products`,
+        payload: {
+          name: product.name,
+          categoryId,
+          basePrice: 195,
+          attributes,
+          variants: [
+            {
+              sku: "TEST-SKU",
+              attributes: variantAttributes,
+            },
+          ],
+          details,
+        },
+      });
 
-    expect(response.statusCode).toBe(201);
-    expect(services.createProduct).toHaveBeenCalledWith(
-      expect.objectContaining({ merchantId, category, details }),
-    );
-  });
+      expect(response.statusCode).toBe(201);
+      expect(services.createProduct).toHaveBeenCalledWith(
+        expect.objectContaining({
+          merchantId,
+          categoryId,
+          attributes,
+          details,
+        }),
+      );
+    },
+  );
 
   it("lists and updates merchant products", async () => {
     const listResponse = await app.inject({
@@ -275,7 +359,7 @@ describe("Merchant REST API", () => {
     const updateResponse = await app.inject({
       method: "PATCH",
       url: `/v1/products/${productId}`,
-      payload: { listedPrice: 190 },
+      payload: { basePrice: 190 },
     });
 
     expect(listResponse.statusCode).toBe(200);
@@ -285,24 +369,63 @@ describe("Merchant REST API", () => {
     });
     expect(updateResponse.statusCode).toBe(200);
     expect(services.updateProduct).toHaveBeenCalledWith(productId, {
-      listedPrice: 190,
+      basePrice: 190,
     });
   });
 
-  it("updates a URL-encoded inventory variant", async () => {
-    const variantKey = encodeURIComponent("size=US 9;color=Black");
+  it("updates inventory for a stable variant ID", async () => {
     const response = await app.inject({
       method: "PUT",
-      url: `/v1/products/${productId}/inventory/${variantKey}`,
+      url: `/v1/variants/${inventory.variantId}/inventory`,
       payload: { quantityAvailable: 10, quantityReserved: 1 },
     });
 
     expect(response.statusCode).toBe(200);
     expect(services.upsertInventory).toHaveBeenCalledWith({
-      productId,
-      variantKey: "size=US 9;color=Black",
+      variantId: inventory.variantId,
       quantityAvailable: 10,
       quantityReserved: 1,
+    });
+  });
+
+  it("returns category schemas for merchant form generation", async () => {
+    const response = await app.inject({
+      method: "GET",
+      url: `/v1/categories/${product.categoryId}/schema`,
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      success: true,
+      data: {
+        categoryId: product.categoryId,
+        schemaVersion: "1.0",
+      },
+    });
+  });
+
+  it("saves a reusable CSV column-mapping profile", async () => {
+    const payload = {
+      categoryId: "retail_goods.electronics.smartphones",
+      name: "Orchard Tech smartphone CSV",
+      schemaVersion: "1.0",
+      sourceHeaders: ["item_code", "product_title", "storage_size"],
+      columnMapping: {
+        item_code: "variant.sku",
+        product_title: "product.name",
+        storage_size: "variant.attributes.storage",
+      },
+    };
+    const response = await app.inject({
+      method: "POST",
+      url: `/v1/merchants/${merchantId}/import-profiles`,
+      payload,
+    });
+
+    expect(response.statusCode).toBe(201);
+    expect(services.saveImportProfile).toHaveBeenCalledWith({
+      merchantId,
+      ...payload,
     });
   });
 
@@ -390,7 +513,7 @@ describe("Consumer commerce REST API", () => {
     expect(response.statusCode).toBe(200);
     expect(response.json()).toMatchObject({
       success: true,
-      data: { available: true, variantKey: inventory.variantKey },
+      data: { available: true, variantId: inventory.variantId },
     });
   });
 

@@ -2,7 +2,7 @@
 
 Conversational commerce prototype for the Visa x NUS Hackathon. The repository is a TypeScript monorepo that separates user-facing applications, transport adapters, shared contracts, and reusable domain packages so TIM and SANGYOON can develop in parallel.
 
-The repository foundation, shared transport validation, Commerce database, and core Merchant/Catalog/Inventory/Pricing services are implemented. Search, offer, order, payment, and agent behavior remain in later phases.
+The repository foundation, shared transport validation, flexible Commerce catalog, Merchant/Catalog/Inventory/Pricing services, search, offers, and orders are implemented. Payment, the merchant UI, remote MCP transport, and agent behavior remain in later phases.
 
 ## Architecture
 
@@ -154,22 +154,38 @@ pnpm db:studio
 
 `pnpm db:generate` does not require a live database. Migrations, seed data, Studio, and runtime database access require a valid `DATABASE_URL`.
 
-`pnpm db:seed` is idempotent. It creates or updates the fixed demo merchants, products, category details, inventory variants, and pricing policies without deleting unrelated local data.
+`pnpm db:seed` is idempotent. It creates or updates 21 category nodes, seven category schemas, six merchants, six products, eleven variants, inventory, pricing policies, and one example CSV mapping profile without deleting unrelated local data. The sample catalog includes both shoes and an iPhone, proving that physical goods do not share shoe-specific fields.
+
+## Flexible catalog model
+
+The catalog is standardized in layers instead of forcing every product into one rigid schema:
+
+1. `CommerceDomain` identifies the broad purchase flow: `retail_goods`, `services_subscriptions`, or `bookings`.
+2. A hierarchical `categoryId` identifies a comparable product type, for example `retail_goods.apparel.shoes` or `retail_goods.electronics.smartphones`.
+3. The versioned `CategorySchema` defines the product-level and variant-level attributes for that category. Shoes can require `size`; smartphones can require `storage`; activities can require `date` and `time`.
+4. Stable core columns hold identity, price, currency, billing, availability, and lifecycle data. Category-specific attributes live in validated JSONB.
+5. `ProductVariant` owns the SKU, sellable price, variant attributes, and inventory link. Inventory and offers reference the stable `variantId`, never a generated attribute string.
+
+Merchant forms first fetch the selected category schema and generate only the relevant fields. For CSV onboarding, each merchant maps its own headers to canonical paths such as `product.name`, `variant.sku`, or `variant.attributes.storage`. The saved, versioned import profile can be reused for later uploads. This keeps merchant input flexible while giving search and the MCP server one canonical catalog shape. See [Flexible Catalog and Merchant Onboarding](./docs/catalog-and-onboarding.md).
 
 ## Merchant REST API
 
 The structured Merchant form uses these implemented endpoints:
 
-| Operation              | Method  | Endpoint                                          |
-| ---------------------- | ------- | ------------------------------------------------- |
-| Create merchant        | `POST`  | `/v1/merchants`                                   |
-| Create product         | `POST`  | `/v1/merchants/{merchantId}/products`             |
-| List merchant products | `GET`   | `/v1/merchants/{merchantId}/products`             |
-| Update product         | `PATCH` | `/v1/products/{productId}`                        |
-| Update inventory       | `PUT`   | `/v1/products/{productId}/inventory/{variantKey}` |
-| Configure pricing      | `PUT`   | `/v1/products/{productId}/pricing-policy`         |
+| Operation                    | Method  | Endpoint                                     |
+| ---------------------------- | ------- | -------------------------------------------- |
+| List catalog categories      | `GET`   | `/v1/categories`                             |
+| Get category form schema     | `GET`   | `/v1/categories/{categoryId}/schema`         |
+| Create merchant              | `POST`  | `/v1/merchants`                              |
+| Create product with variants | `POST`  | `/v1/merchants/{merchantId}/products`        |
+| List merchant products       | `GET`   | `/v1/merchants/{merchantId}/products`        |
+| Save CSV import profile      | `POST`  | `/v1/merchants/{merchantId}/import-profiles` |
+| List CSV import profiles     | `GET`   | `/v1/merchants/{merchantId}/import-profiles` |
+| Update product               | `PATCH` | `/v1/products/{productId}`                   |
+| Update variant inventory     | `PUT`   | `/v1/variants/{variantId}/inventory`         |
+| Configure pricing            | `PUT`   | `/v1/products/{productId}/pricing-policy`    |
 
-`variantKey` must be URL-encoded when it contains spaces, semicolons, or equals signs. Successful and failed requests use the shared response envelope defined in `packages/contracts`.
+Successful and failed requests use the shared response envelope defined in `packages/contracts`. Category IDs and variant IDs are stable API values; UI labels and arbitrary CSV headers are not used as database relationships.
 
 ## Consumer discovery REST API
 
@@ -189,4 +205,4 @@ Order creation requires the frozen `OrderRequest` with `userConfirmed: true`. Th
 
 ## Current implementation status
 
-The Commerce database schema, fixed four-category taxonomy, demo seed, reusable Commerce services, Merchant REST API, product discovery, inventory matching, deterministic pricing, time-limited Offer generation, explicit confirmation, and idempotent Order creation are implemented. Agent behavior, payment simulation, and remote MCP transport remain in later feature phases.
+The Commerce database schema, hierarchical taxonomy, versioned category schemas, generic variants, reusable CSV mapping profiles, demo seed, Merchant REST API, product discovery, inventory matching, deterministic pricing, time-limited Offer generation, explicit confirmation, and idempotent Order creation are implemented. CSV file parsing/import execution, merchant UI generation, agent behavior, payment simulation, and remote MCP transport remain in later feature phases.

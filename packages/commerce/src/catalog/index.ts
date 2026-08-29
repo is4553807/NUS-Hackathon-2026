@@ -1,14 +1,20 @@
 import {
+  AvailabilityModel as DatabaseAvailabilityModel,
+  BillingModel as DatabaseBillingModel,
+  CommerceDomain as DatabaseCommerceDomain,
   DigitalDeliveryMethod as DatabaseDigitalDeliveryMethod,
-  MerchantStatus,
   Prisma,
-  ProductCategory as DatabaseProductCategory,
+  ProductKind as DatabaseProductKind,
   ServiceDeliveryMode as DatabaseServiceDeliveryMode,
 } from "@visa-commerce/db";
-import type { ProductCategory } from "@visa-commerce/contracts";
+import type {
+  CommerceDomain,
+  ProductAttributes,
+} from "@visa-commerce/contracts";
 
 import { getCommerceDatabase, type CommerceDependencies } from "../database.js";
 import { throwNotFound, throwValidationError } from "../errors.js";
+import { calculateAvailableQuantity } from "../inventory/index.js";
 import {
   requireDate,
   requireNonEmpty,
@@ -22,34 +28,34 @@ export * from "./search.js";
 
 export type JsonValue =
   string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
-
 export type JsonObject = { [key: string]: JsonValue };
+export type ProductKind =
+  "physical_good" | "digital_product" | "service" | "booking";
+export type BillingModel = "one_time" | "recurring" | "usage_based" | "deposit";
+export type AvailabilityModel =
+  "stock" | "unlimited" | "time_slot" | "capacity" | "seat";
 
-type ProductBaseInput = {
-  merchantId: string;
-  name: string;
-  description?: string | null;
-  brand?: string | null;
-  listedPrice: number;
-  currency?: "SGD";
+export type ProductVariantInput = {
+  externalId?: string | null;
+  sku?: string | null;
+  name?: string | null;
+  attributes: ProductAttributes;
+  listedPrice?: number;
   imageUrl?: string | null;
   active?: boolean;
 };
 
 export type PhysicalGoodDetailsInput = {
-  sku?: string | null;
-  sizeOptions?: string[];
-  colorOptions?: string[];
-  material?: string | null;
+  type: "physical_good";
   weightGrams?: number | null;
   lengthCm?: number | null;
   widthCm?: number | null;
   heightCm?: number | null;
   shippingRequired?: boolean;
-  metadata?: JsonObject;
 };
 
 export type DigitalProductDetailsInput = {
+  type: "digital_product";
   deliveryMethod: "download" | "license_key" | "streaming" | "account_access";
   fileFormat?: string | null;
   fileSizeBytes?: number | null;
@@ -57,10 +63,10 @@ export type DigitalProductDetailsInput = {
   licenseRequired?: boolean;
   accessDurationDays?: number | null;
   fulfillmentUrl?: string | null;
-  metadata?: JsonObject;
 };
 
 export type ServiceDetailsInput = {
+  type: "service";
   serviceType: string;
   deliveryMode: "in_person" | "remote" | "hybrid";
   durationMinutes: number;
@@ -68,10 +74,10 @@ export type ServiceDetailsInput = {
   serviceAreas?: string[];
   providerName?: string | null;
   bookingRequired?: boolean;
-  metadata?: JsonObject;
 };
 
 export type BookingExperienceDetailsInput = {
+  type: "booking";
   experienceType?: string | null;
   destination: string;
   venue?: string | null;
@@ -81,65 +87,135 @@ export type BookingExperienceDetailsInput = {
   capacity: number;
   minParticipants?: number;
   meetingPoint?: string | null;
-  metadata?: JsonObject;
 };
 
-export type CreateProductInput =
-  | (ProductBaseInput & {
-      category: "physical_goods";
-      details: PhysicalGoodDetailsInput;
-    })
-  | (ProductBaseInput & {
-      category: "digital_products";
-      details: DigitalProductDetailsInput;
-    })
-  | (ProductBaseInput & {
-      category: "services";
-      details: ServiceDetailsInput;
-    })
-  | (ProductBaseInput & {
-      category: "bookings_experiences";
-      details: BookingExperienceDetailsInput;
-    });
+export type ProductDetailsInput =
+  | PhysicalGoodDetailsInput
+  | DigitalProductDetailsInput
+  | ServiceDetailsInput
+  | BookingExperienceDetailsInput;
+
+export type CreateProductInput = {
+  merchantId: string;
+  externalId?: string | null;
+  categoryId: string;
+  billingModel?: BillingModel;
+  availabilityModel?: AvailabilityModel;
+  name: string;
+  description?: string | null;
+  brand?: string | null;
+  basePrice: number;
+  currency?: "SGD";
+  imageUrl?: string | null;
+  attributes: ProductAttributes;
+  variants: ProductVariantInput[];
+  details: ProductDetailsInput;
+  active?: boolean;
+};
 
 export type UpdateProductInput = {
+  externalId?: string | null;
   name?: string;
   description?: string | null;
   brand?: string | null;
-  listedPrice?: number;
+  basePrice?: number;
   imageUrl?: string | null;
+  attributes?: ProductAttributes;
   active?: boolean;
+};
+
+export type ProductVariantRecord = {
+  variantId: string;
+  externalId: string | null;
+  sku: string | null;
+  name: string | null;
+  attributes: ProductAttributes;
+  listedPrice: number;
+  imageUrl: string | null;
+  active: boolean;
+  quantityAvailable: number | null;
+  quantityReserved: number | null;
+  quantityRemaining: number | null;
 };
 
 export type ProductRecord = {
   productId: string;
   merchantId: string;
   merchantName: string;
+  externalId: string | null;
   name: string;
   description: string | null;
-  category: ProductCategory;
+  commerceDomain: CommerceDomain;
+  categoryId: string;
+  categoryName: string;
+  productKind: ProductKind;
+  billingModel: BillingModel;
+  availabilityModel: AvailabilityModel;
   brand: string | null;
-  listedPrice: number;
+  basePrice: number;
   currency: "SGD";
   imageUrl: string | null;
+  attributes: ProductAttributes;
   active: boolean;
   details: JsonObject | null;
+  variants: ProductVariantRecord[];
   createdAt: string;
   updatedAt: string;
 };
 
-const categoryToDatabase: Record<ProductCategory, DatabaseProductCategory> = {
-  physical_goods: DatabaseProductCategory.PHYSICAL_GOODS,
-  digital_products: DatabaseProductCategory.DIGITAL_PRODUCTS,
-  services: DatabaseProductCategory.SERVICES,
-  bookings_experiences: DatabaseProductCategory.BOOKINGS_EXPERIENCES,
+type AttributeDefinition = {
+  type: "string" | "number" | "boolean";
+  scope: "product" | "variant";
+  required: boolean;
 };
 
-const categoryFromDatabase: Record<DatabaseProductCategory, ProductCategory> = {
-  PHYSICAL_GOODS: "physical_goods",
-  DIGITAL_PRODUCTS: "digital_products",
-  SERVICES: "services",
-  BOOKINGS_EXPERIENCES: "bookings_experiences",
+const commerceDomainMap: Record<DatabaseCommerceDomain, CommerceDomain> = {
+  RETAIL_GOODS: "retail_goods",
+  SERVICES_SUBSCRIPTIONS: "services_subscriptions",
+  BOOKINGS: "bookings",
+};
+
+const productKindMap: Record<DatabaseProductKind, ProductKind> = {
+  PHYSICAL_GOOD: "physical_good",
+  DIGITAL_PRODUCT: "digital_product",
+  SERVICE: "service",
+  BOOKING: "booking",
+};
+
+const billingToDatabase: Record<BillingModel, DatabaseBillingModel> = {
+  one_time: DatabaseBillingModel.ONE_TIME,
+  recurring: DatabaseBillingModel.RECURRING,
+  usage_based: DatabaseBillingModel.USAGE_BASED,
+  deposit: DatabaseBillingModel.DEPOSIT,
+};
+
+const billingFromDatabase: Record<DatabaseBillingModel, BillingModel> = {
+  ONE_TIME: "one_time",
+  RECURRING: "recurring",
+  USAGE_BASED: "usage_based",
+  DEPOSIT: "deposit",
+};
+
+const availabilityToDatabase: Record<
+  AvailabilityModel,
+  DatabaseAvailabilityModel
+> = {
+  stock: DatabaseAvailabilityModel.STOCK,
+  unlimited: DatabaseAvailabilityModel.UNLIMITED,
+  time_slot: DatabaseAvailabilityModel.TIME_SLOT,
+  capacity: DatabaseAvailabilityModel.CAPACITY,
+  seat: DatabaseAvailabilityModel.SEAT,
+};
+
+const availabilityFromDatabase: Record<
+  DatabaseAvailabilityModel,
+  AvailabilityModel
+> = {
+  STOCK: "stock",
+  UNLIMITED: "unlimited",
+  TIME_SLOT: "time_slot",
+  CAPACITY: "capacity",
+  SEAT: "seat",
 };
 
 const digitalDeliveryToDatabase = {
@@ -170,10 +246,15 @@ const serviceModeFromDatabase = {
 
 const productInclude = {
   merchant: { select: { name: true } },
+  category: { select: { name: true, domain: true } },
   physicalGoodDetails: true,
   digitalProductDetails: true,
   serviceDetails: true,
   bookingExperienceDetails: true,
+  variants: {
+    include: { inventory: true },
+    orderBy: [{ listedPrice: "asc" as const }, { createdAt: "asc" as const }],
+  },
 } satisfies Prisma.ProductInclude;
 
 type ProductWithDetails = Prisma.ProductGetPayload<{
@@ -190,32 +271,40 @@ function cleanOptions(values: string[] | undefined): string[] {
   ];
 }
 
+function scalarAttributes(value: Prisma.JsonValue): ProductAttributes {
+  if (Array.isArray(value) || value === null || typeof value !== "object") {
+    return {};
+  }
+
+  return Object.fromEntries(
+    Object.entries(value).filter(
+      (entry): entry is [string, string | number | boolean] =>
+        typeof entry[1] === "string" ||
+        typeof entry[1] === "number" ||
+        typeof entry[1] === "boolean",
+    ),
+  );
+}
+
 function mapDetails(product: ProductWithDetails): JsonObject | null {
-  if (
-    product.category === DatabaseProductCategory.PHYSICAL_GOODS &&
-    product.physicalGoodDetails !== null
-  ) {
+  if (product.productKind === DatabaseProductKind.PHYSICAL_GOOD) {
     const details = product.physicalGoodDetails;
+    if (details === null) return null;
     return {
-      sku: details.sku,
-      sizeOptions: details.sizeOptions,
-      colorOptions: details.colorOptions,
-      material: details.material,
+      type: "physical_good",
       weightGrams: details.weightGrams,
       lengthCm: details.lengthCm?.toNumber() ?? null,
       widthCm: details.widthCm?.toNumber() ?? null,
       heightCm: details.heightCm?.toNumber() ?? null,
       shippingRequired: details.shippingRequired,
-      metadata: (details.metadata as JsonValue | null) ?? null,
     };
   }
 
-  if (
-    product.category === DatabaseProductCategory.DIGITAL_PRODUCTS &&
-    product.digitalProductDetails !== null
-  ) {
+  if (product.productKind === DatabaseProductKind.DIGITAL_PRODUCT) {
     const details = product.digitalProductDetails;
+    if (details === null) return null;
     return {
+      type: "digital_product",
       deliveryMethod: digitalDeliveryFromDatabase[details.deliveryMethod],
       fileFormat: details.fileFormat,
       fileSizeBytes: details.fileSizeBytes?.toString() ?? null,
@@ -223,16 +312,14 @@ function mapDetails(product: ProductWithDetails): JsonObject | null {
       licenseRequired: details.licenseRequired,
       accessDurationDays: details.accessDurationDays,
       fulfillmentUrl: details.fulfillmentUrl,
-      metadata: (details.metadata as JsonValue | null) ?? null,
     };
   }
 
-  if (
-    product.category === DatabaseProductCategory.SERVICES &&
-    product.serviceDetails !== null
-  ) {
+  if (product.productKind === DatabaseProductKind.SERVICE) {
     const details = product.serviceDetails;
+    if (details === null) return null;
     return {
+      type: "service",
       serviceType: details.serviceType,
       deliveryMode: serviceModeFromDatabase[details.deliveryMode],
       durationMinutes: details.durationMinutes,
@@ -240,30 +327,23 @@ function mapDetails(product: ProductWithDetails): JsonObject | null {
       serviceAreas: details.serviceAreas,
       providerName: details.providerName,
       bookingRequired: details.bookingRequired,
-      metadata: (details.metadata as JsonValue | null) ?? null,
     };
   }
 
-  if (
-    product.category === DatabaseProductCategory.BOOKINGS_EXPERIENCES &&
-    product.bookingExperienceDetails !== null
-  ) {
-    const details = product.bookingExperienceDetails;
-    return {
-      experienceType: details.experienceType,
-      destination: details.destination,
-      venue: details.venue,
-      startsAt: details.startsAt.toISOString(),
-      endsAt: details.endsAt.toISOString(),
-      timezone: details.timezone,
-      capacity: details.capacity,
-      minParticipants: details.minParticipants,
-      meetingPoint: details.meetingPoint,
-      metadata: (details.metadata as JsonValue | null) ?? null,
-    };
-  }
-
-  return null;
+  const details = product.bookingExperienceDetails;
+  if (details === null) return null;
+  return {
+    type: "booking",
+    experienceType: details.experienceType,
+    destination: details.destination,
+    venue: details.venue,
+    startsAt: details.startsAt.toISOString(),
+    endsAt: details.endsAt.toISOString(),
+    timezone: details.timezone,
+    capacity: details.capacity,
+    minParticipants: details.minParticipants,
+    meetingPoint: details.meetingPoint,
+  };
 }
 
 function toProductRecord(product: ProductWithDetails): ProductRecord {
@@ -271,22 +351,178 @@ function toProductRecord(product: ProductWithDetails): ProductRecord {
     productId: product.id,
     merchantId: product.merchantId,
     merchantName: product.merchant.name,
+    externalId: product.externalId,
     name: product.name,
     description: product.description,
-    category: categoryFromDatabase[product.category],
+    commerceDomain: commerceDomainMap[product.category.domain],
+    categoryId: product.categoryId,
+    categoryName: product.category.name,
+    productKind: productKindMap[product.productKind],
+    billingModel: billingFromDatabase[product.billingModel],
+    availabilityModel: availabilityFromDatabase[product.availabilityModel],
     brand: product.brand,
-    listedPrice: product.listedPrice.toNumber(),
+    basePrice: product.basePrice.toNumber(),
     currency: "SGD",
     imageUrl: product.imageUrl,
+    attributes: scalarAttributes(product.attributes),
     active: product.active,
     details: mapDetails(product),
+    variants: product.variants.map((variant) => ({
+      variantId: variant.id,
+      externalId: variant.externalId,
+      sku: variant.sku,
+      name: variant.name,
+      attributes: scalarAttributes(variant.attributes),
+      listedPrice: variant.listedPrice.toNumber(),
+      imageUrl: variant.imageUrl,
+      active: variant.active,
+      quantityAvailable: variant.inventory?.quantityAvailable ?? null,
+      quantityReserved: variant.inventory?.quantityReserved ?? null,
+      quantityRemaining:
+        variant.inventory === null
+          ? null
+          : calculateAvailableQuantity(
+              variant.inventory.quantityAvailable,
+              variant.inventory.quantityReserved,
+            ),
+    })),
     createdAt: product.createdAt.toISOString(),
     updatedAt: product.updatedAt.toISOString(),
   };
 }
 
+function parseAttributeDefinitions(
+  schema: Prisma.JsonValue | null,
+): Record<string, AttributeDefinition> {
+  if (schema === null || Array.isArray(schema) || typeof schema !== "object") {
+    return {};
+  }
+  const rawAttributes = schema.attributes;
+  if (
+    rawAttributes === null ||
+    Array.isArray(rawAttributes) ||
+    typeof rawAttributes !== "object"
+  ) {
+    return {};
+  }
+
+  const parsed: Record<string, AttributeDefinition> = {};
+  for (const [key, raw] of Object.entries(rawAttributes)) {
+    if (raw === null || Array.isArray(raw) || typeof raw !== "object") continue;
+    if (
+      (raw.type !== "string" &&
+        raw.type !== "number" &&
+        raw.type !== "boolean") ||
+      (raw.scope !== "product" && raw.scope !== "variant")
+    ) {
+      continue;
+    }
+    parsed[key] = {
+      type: raw.type,
+      scope: raw.scope,
+      required: raw.required === true,
+    };
+  }
+  return parsed;
+}
+
+function validateAttributeValue(
+  key: string,
+  value: string | number | boolean,
+  expectedType: AttributeDefinition["type"],
+  fieldPath: string,
+): void {
+  if (typeof value !== expectedType) {
+    throwValidationError(`${fieldPath}.${key} must be a ${expectedType}.`, {
+      field: `${fieldPath}.${key}`,
+      expectedType,
+    });
+  }
+}
+
+export function validateCategoryAttributes(input: {
+  schema: Prisma.JsonValue | null;
+  productAttributes: ProductAttributes;
+  variants: Array<{ attributes: ProductAttributes }>;
+}): void {
+  const definitions = parseAttributeDefinitions(input.schema);
+
+  for (const [key, definition] of Object.entries(definitions)) {
+    if (definition.scope === "product") {
+      const value = input.productAttributes[key];
+      if (value === undefined && definition.required) {
+        throwValidationError(`attributes.${key} is required.`, {
+          field: `attributes.${key}`,
+        });
+      }
+      if (value !== undefined) {
+        validateAttributeValue(key, value, definition.type, "attributes");
+      }
+      continue;
+    }
+
+    for (const [index, variant] of input.variants.entries()) {
+      const value = variant.attributes[key];
+      if (value === undefined && definition.required) {
+        throwValidationError(
+          `variants[${index}].attributes.${key} is required.`,
+          {
+            field: `variants[${index}].attributes.${key}`,
+          },
+        );
+      }
+      if (value !== undefined) {
+        validateAttributeValue(
+          key,
+          value,
+          definition.type,
+          `variants[${index}].attributes`,
+        );
+      }
+    }
+  }
+}
+
+function stableAttributeKey(attributes: ProductAttributes): string {
+  return JSON.stringify(
+    Object.fromEntries(
+      Object.entries(attributes).sort(([left], [right]) =>
+        left.localeCompare(right),
+      ),
+    ),
+  );
+}
+
+function validateVariants(variants: ProductVariantInput[]): void {
+  if (variants.length === 0) {
+    throwValidationError("At least one ProductVariant is required.", {
+      field: "variants",
+    });
+  }
+
+  const combinations = new Set<string>();
+  const skus = new Set<string>();
+  for (const [index, variant] of variants.entries()) {
+    const combination = stableAttributeKey(variant.attributes);
+    if (combinations.has(combination)) {
+      throwValidationError("Variant attribute combinations must be unique.", {
+        field: `variants[${index}].attributes`,
+      });
+    }
+    combinations.add(combination);
+
+    const sku = optionalText(variant.sku);
+    if (sku !== null && skus.has(sku)) {
+      throwValidationError("Variant SKUs must be unique.", {
+        field: `variants[${index}].sku`,
+      });
+    }
+    if (sku !== null) skus.add(sku);
+  }
+}
+
 function buildCategoryDetails(
-  input: CreateProductInput,
+  details: ProductDetailsInput,
 ): Pick<
   Prisma.ProductCreateInput,
   | "physicalGoodDetails"
@@ -294,51 +530,42 @@ function buildCategoryDetails(
   | "serviceDetails"
   | "bookingExperienceDetails"
 > {
-  switch (input.category) {
-    case "physical_goods": {
-      const details = input.details;
+  switch (details.type) {
+    case "physical_good":
       return {
         physicalGoodDetails: {
           create: {
-            sku: optionalText(details.sku),
-            sizeOptions: cleanOptions(details.sizeOptions),
-            colorOptions: cleanOptions(details.colorOptions),
-            material: optionalText(details.material),
             weightGrams:
-              details.weightGrams === null || details.weightGrams === undefined
+              details.weightGrams == null
                 ? null
                 : requireNonNegativeInteger(
                     details.weightGrams,
                     "details.weightGrams",
                   ),
             lengthCm:
-              details.lengthCm === null || details.lengthCm === undefined
+              details.lengthCm == null
                 ? null
                 : requireNonNegative(details.lengthCm, "details.lengthCm"),
             widthCm:
-              details.widthCm === null || details.widthCm === undefined
+              details.widthCm == null
                 ? null
                 : requireNonNegative(details.widthCm, "details.widthCm"),
             heightCm:
-              details.heightCm === null || details.heightCm === undefined
+              details.heightCm == null
                 ? null
                 : requireNonNegative(details.heightCm, "details.heightCm"),
             shippingRequired: details.shippingRequired ?? true,
-            metadata: details.metadata as Prisma.InputJsonObject | undefined,
           },
         },
       };
-    }
-    case "digital_products": {
-      const details = input.details;
+    case "digital_product":
       return {
         digitalProductDetails: {
           create: {
             deliveryMethod: digitalDeliveryToDatabase[details.deliveryMethod],
             fileFormat: optionalText(details.fileFormat),
             fileSizeBytes:
-              details.fileSizeBytes === null ||
-              details.fileSizeBytes === undefined
+              details.fileSizeBytes == null
                 ? null
                 : BigInt(
                     requireNonNegativeInteger(
@@ -349,21 +576,17 @@ function buildCategoryDetails(
             version: optionalText(details.version),
             licenseRequired: details.licenseRequired ?? false,
             accessDurationDays:
-              details.accessDurationDays === null ||
-              details.accessDurationDays === undefined
+              details.accessDurationDays == null
                 ? null
                 : requirePositiveInteger(
                     details.accessDurationDays,
                     "details.accessDurationDays",
                   ),
             fulfillmentUrl: optionalText(details.fulfillmentUrl),
-            metadata: details.metadata as Prisma.InputJsonObject | undefined,
           },
         },
       };
-    }
-    case "services": {
-      const details = input.details;
+    case "service":
       return {
         serviceDetails: {
           create: {
@@ -380,13 +603,10 @@ function buildCategoryDetails(
             serviceAreas: cleanOptions(details.serviceAreas),
             providerName: optionalText(details.providerName),
             bookingRequired: details.bookingRequired ?? true,
-            metadata: details.metadata as Prisma.InputJsonObject | undefined,
           },
         },
       };
-    }
-    case "bookings_experiences": {
-      const details = input.details;
+    case "booking": {
       const startsAt = requireDate(details.startsAt, "details.startsAt");
       const endsAt = requireDate(details.endsAt, "details.endsAt");
       const capacity = requirePositiveInteger(
@@ -397,17 +617,18 @@ function buildCategoryDetails(
         details.minParticipants ?? 1,
         "details.minParticipants",
       );
-
       if (endsAt <= startsAt) {
-        throwValidationError("details.endsAt must be after details.startsAt.");
+        throwValidationError("details.endsAt must be after details.startsAt.", {
+          startsAt: startsAt.toISOString(),
+          endsAt: endsAt.toISOString(),
+        });
       }
-
       if (minParticipants > capacity) {
         throwValidationError(
           "details.minParticipants must not exceed details.capacity.",
+          { minParticipants, capacity },
         );
       }
-
       return {
         bookingExperienceDetails: {
           create: {
@@ -419,14 +640,10 @@ function buildCategoryDetails(
             venue: optionalText(details.venue),
             startsAt,
             endsAt,
-            timezone: requireNonEmpty(
-              details.timezone ?? "Asia/Singapore",
-              "details.timezone",
-            ),
+            timezone: optionalText(details.timezone) ?? "Asia/Singapore",
             capacity,
             minParticipants,
             meetingPoint: optionalText(details.meetingPoint),
-            metadata: details.metadata as Prisma.InputJsonObject | undefined,
           },
         },
       };
@@ -441,104 +658,101 @@ export async function createProduct(
   const database = getCommerceDatabase(dependencies);
   const merchant = await database.merchant.findUnique({
     where: { id: input.merchantId },
-    select: { status: true },
-  });
-
-  if (merchant === null) {
-    throwNotFound("Merchant", input.merchantId);
-  }
-
-  if (merchant.status !== MerchantStatus.ACTIVE) {
-    throwValidationError(
-      "Products can only be created for an active merchant.",
-      {
-        merchantId: input.merchantId,
-      },
-    );
-  }
-
-  const listedPrice = roundMoney(
-    requireNonNegative(input.listedPrice, "listedPrice"),
-  );
-
-  const data: Prisma.ProductCreateInput = {
-    merchant: { connect: { id: input.merchantId } },
-    name: requireNonEmpty(input.name, "name"),
-    description: optionalText(input.description),
-    category: categoryToDatabase[input.category],
-    brand: optionalText(input.brand),
-    listedPrice,
-    currency: input.currency ?? "SGD",
-    imageUrl: optionalText(input.imageUrl),
-    active: input.active ?? true,
-    ...buildCategoryDetails(input),
-  };
-
-  const product = await database.product.create({
-    data,
-    include: productInclude,
-  });
-
-  return toProductRecord(product);
-}
-
-export async function getProduct(
-  productId: string,
-  dependencies: CommerceDependencies = {},
-): Promise<ProductRecord> {
-  const database = getCommerceDatabase(dependencies);
-  const product = await database.product.findUnique({
-    where: { id: productId },
-    include: productInclude,
-  });
-
-  if (product === null) {
-    throwNotFound("Product", productId);
-  }
-
-  return toProductRecord(product);
-}
-
-export async function updateProduct(
-  productId: string,
-  input: UpdateProductInput,
-  dependencies: CommerceDependencies = {},
-): Promise<ProductRecord> {
-  const database = getCommerceDatabase(dependencies);
-  const existing = await database.product.findUnique({
-    where: { id: productId },
     select: { id: true },
   });
+  if (merchant === null) throwNotFound("Merchant", input.merchantId);
 
-  if (existing === null) {
-    throwNotFound("Product", productId);
+  const category = await database.category.findFirst({
+    where: { id: input.categoryId, active: true },
+    include: {
+      children: { where: { active: true }, select: { id: true } },
+      schemas: {
+        where: { active: true },
+        orderBy: { createdAt: "desc" },
+        take: 1,
+      },
+    },
+  });
+  if (category === null) throwNotFound("Category", input.categoryId);
+  if (category.children.length > 0) {
+    throwValidationError("Select the most specific leaf category.", {
+      categoryId: input.categoryId,
+    });
   }
 
-  const data: Prisma.ProductUpdateInput = {};
-
-  if (input.name !== undefined) data.name = requireNonEmpty(input.name, "name");
-  if (input.description !== undefined)
-    data.description = optionalText(input.description);
-  if (input.brand !== undefined) data.brand = optionalText(input.brand);
-  if (input.imageUrl !== undefined)
-    data.imageUrl = optionalText(input.imageUrl);
-  if (input.active !== undefined) data.active = input.active;
-  if (input.listedPrice !== undefined) {
-    data.listedPrice = roundMoney(
-      requireNonNegative(input.listedPrice, "listedPrice"),
+  const expectedKind = productKindMap[category.productKind];
+  if (input.details.type !== expectedKind) {
+    throwValidationError(
+      `details.type must be ${expectedKind} for ${category.id}.`,
+      { categoryId: category.id, expectedKind },
     );
   }
 
-  if (Object.keys(data).length === 0) {
-    throwValidationError("At least one product field must be provided.");
-  }
-
-  const product = await database.product.update({
-    where: { id: productId },
-    data,
-    include: productInclude,
+  validateVariants(input.variants);
+  validateCategoryAttributes({
+    schema: category.schemas[0]?.attributeSchema ?? null,
+    productAttributes: input.attributes,
+    variants: input.variants,
   });
 
+  const basePrice = roundMoney(
+    requireNonNegative(input.basePrice, "basePrice"),
+  );
+  const product = await database.$transaction(async (transaction) => {
+    const created = await transaction.product.create({
+      data: {
+        merchant: { connect: { id: input.merchantId } },
+        category: { connect: { id: category.id } },
+        externalId: optionalText(input.externalId),
+        productKind: category.productKind,
+        billingModel:
+          input.billingModel === undefined
+            ? category.defaultBillingModel
+            : billingToDatabase[input.billingModel],
+        availabilityModel:
+          input.availabilityModel === undefined
+            ? category.defaultAvailabilityModel
+            : availabilityToDatabase[input.availabilityModel],
+        name: requireNonEmpty(input.name, "name"),
+        description: optionalText(input.description),
+        brand: optionalText(input.brand),
+        basePrice,
+        currency: input.currency ?? "SGD",
+        imageUrl: optionalText(input.imageUrl),
+        attributes: input.attributes as Prisma.InputJsonObject,
+        active: input.active ?? true,
+        ...buildCategoryDetails(input.details),
+      },
+    });
+
+    for (const variant of input.variants) {
+      await transaction.productVariant.create({
+        data: {
+          merchantId: input.merchantId,
+          productId: created.id,
+          externalId: optionalText(variant.externalId),
+          sku: optionalText(variant.sku),
+          name: optionalText(variant.name),
+          attributes: variant.attributes as Prisma.InputJsonObject,
+          listedPrice: roundMoney(
+            requireNonNegative(
+              variant.listedPrice ?? basePrice,
+              "variant.listedPrice",
+            ),
+          ),
+          imageUrl: optionalText(variant.imageUrl),
+          active: variant.active ?? true,
+        },
+      });
+    }
+
+    return transaction.product.findUnique({
+      where: { id: created.id },
+      include: productInclude,
+    });
+  });
+
+  if (product === null) throwNotFound("Product", "created product");
   return toProductRecord(product);
 }
 
@@ -551,16 +765,67 @@ export async function listMerchantProducts(
     where: { id: merchantId },
     select: { id: true },
   });
-
-  if (merchant === null) {
-    throwNotFound("Merchant", merchantId);
-  }
+  if (merchant === null) throwNotFound("Merchant", merchantId);
 
   const products = await database.product.findMany({
     where: { merchantId },
     include: productInclude,
-    orderBy: { createdAt: "desc" },
+    orderBy: { createdAt: "asc" },
+  });
+  return products.map(toProductRecord);
+}
+
+export async function updateProduct(
+  productId: string,
+  input: UpdateProductInput,
+  dependencies: CommerceDependencies = {},
+): Promise<ProductRecord> {
+  const database = getCommerceDatabase(dependencies);
+  const existing = await database.product.findUnique({
+    where: { id: productId },
+    select: { basePrice: true },
+  });
+  if (existing === null) throwNotFound("Product", productId);
+
+  const nextBasePrice =
+    input.basePrice === undefined
+      ? undefined
+      : roundMoney(requireNonNegative(input.basePrice, "basePrice"));
+  const data: Prisma.ProductUpdateInput = {
+    ...(input.externalId === undefined
+      ? {}
+      : { externalId: optionalText(input.externalId) }),
+    ...(input.name === undefined
+      ? {}
+      : { name: requireNonEmpty(input.name, "name") }),
+    ...(input.description === undefined
+      ? {}
+      : { description: optionalText(input.description) }),
+    ...(input.brand === undefined ? {} : { brand: optionalText(input.brand) }),
+    ...(nextBasePrice === undefined ? {} : { basePrice: nextBasePrice }),
+    ...(input.imageUrl === undefined
+      ? {}
+      : { imageUrl: optionalText(input.imageUrl) }),
+    ...(input.attributes === undefined
+      ? {}
+      : { attributes: input.attributes as Prisma.InputJsonObject }),
+    ...(input.active === undefined ? {} : { active: input.active }),
+  };
+
+  const product = await database.$transaction(async (transaction) => {
+    await transaction.product.update({ where: { id: productId }, data });
+    if (nextBasePrice !== undefined) {
+      await transaction.productVariant.updateMany({
+        where: { productId, listedPrice: existing.basePrice },
+        data: { listedPrice: nextBasePrice },
+      });
+    }
+    return transaction.product.findUnique({
+      where: { id: productId },
+      include: productInclude,
+    });
   });
 
-  return products.map(toProductRecord);
+  if (product === null) throwNotFound("Product", productId);
+  return toProductRecord(product);
 }

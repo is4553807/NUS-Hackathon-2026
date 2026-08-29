@@ -12,7 +12,6 @@ import type {
 import { getCommerceDatabase, type CommerceDependencies } from "../database.js";
 import { throwNotFound, throwValidationError } from "../errors.js";
 import {
-  requireNonEmpty,
   requireNonNegativeInteger,
   requirePositiveInteger,
 } from "../validation.js";
@@ -20,8 +19,7 @@ import {
 export type InventoryAvailability = "in_stock" | "low_stock" | "out_of_stock";
 
 export type UpsertInventoryInput = {
-  productId: string;
-  variantKey: string;
+  variantId: string;
   quantityAvailable: number;
   quantityReserved?: number;
 };
@@ -30,7 +28,9 @@ export type InventoryRecord = {
   inventoryId: string;
   merchantId: string;
   productId: string;
-  variantKey: string;
+  variantId: string;
+  sku: string | null;
+  attributes: ProductAttributes;
   quantityAvailable: number;
   quantityReserved: number;
   quantityRemaining: number;
@@ -62,25 +62,9 @@ export function deriveInventoryAvailability(
     quantityAvailable,
     quantityReserved,
   );
-
   if (remaining === 0) return DatabaseInventoryAvailability.OUT_OF_STOCK;
   if (remaining <= 5) return DatabaseInventoryAvailability.LOW_STOCK;
   return DatabaseInventoryAvailability.IN_STOCK;
-}
-
-export function parseVariantKey(variantKey: string): Record<string, string> {
-  const parsed: Record<string, string> = {};
-
-  for (const segment of variantKey.split(";")) {
-    const separatorIndex = segment.indexOf("=");
-    if (separatorIndex <= 0) continue;
-
-    const key = segment.slice(0, separatorIndex).trim();
-    const value = segment.slice(separatorIndex + 1).trim();
-    if (key.length > 0 && value.length > 0) parsed[key] = value;
-  }
-
-  return parsed;
 }
 
 function normalizedAttribute(value: ProductAttributeValue): string {
@@ -88,15 +72,10 @@ function normalizedAttribute(value: ProductAttributeValue): string {
 }
 
 export function variantMatchesAttributes(
-  variantKey: string,
-  attributes: ProductAttributes,
+  variantAttributes: ProductAttributes,
+  requestedAttributes: ProductAttributes,
 ): boolean {
-  const variantAttributes = parseVariantKey(variantKey);
-  const requestedAttributes = Object.entries(attributes);
-
-  if (Object.keys(variantAttributes).length === 0) return false;
-
-  return requestedAttributes.every(([key, requestedValue]) => {
+  return Object.entries(requestedAttributes).every(([key, requestedValue]) => {
     const variantValue = variantAttributes[key];
     return (
       variantValue !== undefined &&
@@ -105,21 +84,34 @@ export function variantMatchesAttributes(
   });
 }
 
-function toInventoryRecord(inventory: {
-  id: string;
-  merchantId: string;
-  productId: string;
-  variantKey: string;
-  quantityAvailable: number;
-  quantityReserved: number;
-  availability: DatabaseInventoryAvailability;
-  updatedAt: Date;
-}): InventoryRecord {
+function scalarAttributes(value: Prisma.JsonValue): ProductAttributes {
+  if (value === null || Array.isArray(value) || typeof value !== "object") {
+    return {};
+  }
+  return Object.fromEntries(
+    Object.entries(value).filter(
+      (entry): entry is [string, string | number | boolean] =>
+        typeof entry[1] === "string" ||
+        typeof entry[1] === "number" ||
+        typeof entry[1] === "boolean",
+    ),
+  );
+}
+
+type InventoryWithVariant = Prisma.InventoryGetPayload<{
+  include: {
+    variant: { select: { productId: true; sku: true; attributes: true } };
+  };
+}>;
+
+function toInventoryRecord(inventory: InventoryWithVariant): InventoryRecord {
   return {
     inventoryId: inventory.id,
     merchantId: inventory.merchantId,
-    productId: inventory.productId,
-    variantKey: inventory.variantKey,
+    productId: inventory.variant.productId,
+    variantId: inventory.variantId,
+    sku: inventory.variant.sku,
+    attributes: scalarAttributes(inventory.variant.attributes),
     quantityAvailable: inventory.quantityAvailable,
     quantityReserved: inventory.quantityReserved,
     quantityRemaining: calculateAvailableQuantity(
@@ -131,25 +123,23 @@ function toInventoryRecord(inventory: {
   };
 }
 
+const inventoryInclude = {
+  variant: { select: { productId: true, sku: true, attributes: true } },
+} as const;
+
 export async function upsertInventory(
   input: UpsertInventoryInput,
   dependencies: CommerceDependencies = {},
 ): Promise<InventoryRecord> {
   const database = getCommerceDatabase(dependencies);
-  const product = await database.product.findUnique({
-    where: { id: input.productId },
-    select: { merchantId: true },
+  const variant = await database.productVariant.findUnique({
+    where: { id: input.variantId },
+    select: { id: true, merchantId: true },
   });
+  if (variant === null) throwNotFound("ProductVariant", input.variantId);
 
-  if (product === null) {
-    throwNotFound("Product", input.productId);
-  }
-
-  const variantKey = requireNonEmpty(input.variantKey, "variantKey");
   const existing = await database.inventory.findUnique({
-    where: {
-      productId_variantKey: { productId: input.productId, variantKey },
-    },
+    where: { variantId: input.variantId },
     select: { quantityReserved: true },
   });
   const quantityAvailable = requireNonNegativeInteger(
@@ -160,7 +150,6 @@ export async function upsertInventory(
     input.quantityReserved ?? existing?.quantityReserved ?? 0,
     "quantityReserved",
   );
-
   if (quantityReserved > quantityAvailable) {
     throwValidationError(
       "quantityReserved must not exceed quantityAvailable.",
@@ -168,32 +157,22 @@ export async function upsertInventory(
     );
   }
 
-  const availability = deriveInventoryAvailability(
-    quantityAvailable,
-    quantityReserved,
-  );
   const data = {
-    merchantId: product.merchantId,
+    merchantId: variant.merchantId,
     quantityAvailable,
     quantityReserved,
-    availability,
-  } satisfies Omit<
-    Prisma.InventoryUncheckedCreateInput,
-    "id" | "productId" | "variantKey"
-  >;
+    availability: deriveInventoryAvailability(
+      quantityAvailable,
+      quantityReserved,
+    ),
+  } satisfies Omit<Prisma.InventoryUncheckedCreateInput, "id" | "variantId">;
 
   const inventory = await database.inventory.upsert({
-    where: {
-      productId_variantKey: { productId: input.productId, variantKey },
-    },
-    create: {
-      productId: input.productId,
-      variantKey,
-      ...data,
-    },
+    where: { variantId: input.variantId },
+    create: { variantId: input.variantId, ...data },
     update: data,
+    include: inventoryInclude,
   });
-
   return toInventoryRecord(inventory);
 }
 
@@ -206,16 +185,13 @@ export async function listProductInventory(
     where: { id: productId },
     select: { id: true },
   });
-
-  if (product === null) {
-    throwNotFound("Product", productId);
-  }
+  if (product === null) throwNotFound("Product", productId);
 
   const inventory = await database.inventory.findMany({
-    where: { productId },
-    orderBy: { variantKey: "asc" },
+    where: { variant: { productId } },
+    include: inventoryInclude,
+    orderBy: { variant: { createdAt: "asc" } },
   });
-
   return inventory.map(toInventoryRecord);
 }
 
@@ -227,39 +203,39 @@ export async function checkInventory(
   const quantity = requirePositiveInteger(input.quantity, "quantity");
   const product = await database.product.findUnique({
     where: { id: input.productId },
-    select: { id: true },
+    include: {
+      variants: {
+        where: { active: true },
+        include: { inventory: true },
+        orderBy: { createdAt: "asc" },
+      },
+    },
   });
+  if (product === null) throwNotFound("Product", input.productId);
 
-  if (product === null) {
-    throwNotFound("Product", input.productId);
-  }
-
-  const variants = await database.inventory.findMany({
-    where: { productId: input.productId },
-    orderBy: { variantKey: "asc" },
-  });
-  const variant = variants.find((candidate) =>
-    variantMatchesAttributes(candidate.variantKey, input.attributes),
+  const variant = product.variants.find((candidate) =>
+    variantMatchesAttributes(
+      scalarAttributes(candidate.attributes),
+      input.attributes,
+    ),
   );
-
-  if (variant === undefined) {
+  if (variant === undefined || variant.inventory === null) {
     return {
       available: false,
       quantityAvailable: 0,
-      variantKey: "unmatched",
+      variantId: variant?.id ?? null,
       checkedAt: new Date().toISOString(),
     };
   }
 
   const availableQuantity = calculateAvailableQuantity(
-    variant.quantityAvailable,
-    variant.quantityReserved,
+    variant.inventory.quantityAvailable,
+    variant.inventory.quantityReserved,
   );
-
   return {
     available: availableQuantity >= quantity,
     quantityAvailable: availableQuantity,
-    variantKey: variant.variantKey,
+    variantId: variant.id,
     checkedAt: new Date().toISOString(),
   };
 }

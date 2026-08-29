@@ -3,7 +3,7 @@ import {
   OfferStatus,
   OrderStatus as DatabaseOrderStatus,
   Prisma,
-  ProductCategory,
+  ProductKind,
 } from "@visa-commerce/db";
 import {
   OrderRequestSchema,
@@ -225,6 +225,7 @@ export async function createOrder(
       const offer = await transaction.offer.findUnique({
         where: { id: request.offerId },
         include: {
+          variant: { include: { inventory: true } },
           product: {
             include: {
               merchant: { select: { status: true } },
@@ -237,14 +238,7 @@ export async function createOrder(
 
       if (offer === null) throwNotFound("Offer", request.offerId);
 
-      const inventory = await transaction.inventory.findUnique({
-        where: {
-          productId_variantKey: {
-            productId: offer.productId,
-            variantKey: offer.variantKey,
-          },
-        },
-      });
+      const inventory = offer.variant.inventory;
 
       if (inventory === null) {
         orderFailure({
@@ -259,7 +253,7 @@ export async function createOrder(
         inventory.quantityAvailable,
         inventory.quantityReserved,
       );
-      const currentListedPrice = offer.product.listedPrice.toNumber();
+      const currentListedPrice = offer.variant.listedPrice.toNumber();
       let currentOfferedPrice: number;
 
       try {
@@ -291,7 +285,7 @@ export async function createOrder(
         merchantActive: offer.product.merchant.status === MerchantStatus.ACTIVE,
         deliveryAvailable: offer.deliveryAvailable,
         bookingStartsAt:
-          offer.product.category === ProductCategory.BOOKINGS_EXPERIENCES
+          offer.product.productKind === ProductKind.BOOKING
             ? (offer.product.bookingExperienceDetails?.startsAt ?? null)
             : null,
         quantityRequested: offer.quantity,

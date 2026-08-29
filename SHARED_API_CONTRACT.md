@@ -1,8 +1,8 @@
-# Visa x NUS Hackathon - Shared API Contract v1.0
+# Visa x NUS Hackathon - Shared API Contract v1.1
 
 > Status: **Frozen for MVP**  
 > Owners: **SANGYOON (Merchant, Commerce, and MCP)** and **TIM (Consumer, Agent, and Telegram)**  
-> Last updated: 2026-08-29  
+> Last updated: 2026-08-30
 > REST base path: `/v1`
 
 This document defines the integration boundary between TIM's agent-facing applications and SANGYOON's commerce backend.
@@ -91,25 +91,24 @@ Only mock tokens, provider-issued tokens, or non-sensitive payment references ma
 ```ts
 type CurrencyCode = "SGD";
 
-type ProductCategory =
-  "physical_goods" | "digital_products" | "services" | "bookings_experiences";
+type CommerceDomain = "retail_goods" | "services_subscriptions" | "bookings";
+
+type CategoryId = string;
 
 type ProductAttributeValue = string | number | boolean;
 
 type ProductAttributes = Record<string, ProductAttributeValue>;
 ```
 
-### 3.4 Fixed MVP product categories
+### 3.4 Commerce domains and hierarchical categories
 
-| UI label               | API and database value | Category-specific details                                                                  |
-| ---------------------- | ---------------------- | ------------------------------------------------------------------------------------------ |
-| Physical Goods         | `physical_goods`       | SKU, sizes, colors, material, weight, dimensions, and shipping requirement                 |
-| Digital Products       | `digital_products`     | Delivery method, file format/size, version, licence, and access duration                   |
-| Services               | `services`             | Service type, delivery mode, duration, location/service areas, and provider                |
-| Bookings & Experiences | `bookings_experiences` | Experience type, destination, venue, start/end time, timezone, capacity, and meeting point |
+| Commerce domain          | Purpose                                            | Example leaf category IDs              |
+| ------------------------ | -------------------------------------------------- | -------------------------------------- |
+| `retail_goods`           | Physical goods, food ordering, and online shopping | `retail_goods.apparel.shoes`           |
+| `services_subscriptions` | Digital goods, services, memberships, and SaaS     | `services_subscriptions.software.saas` |
+| `bookings`               | Transportation, accommodation, and activities      | `bookings.accommodation.hotels`        |
 
-These four values are the complete MVP top-level taxonomy. A narrower concern such as
-`basketball_shoes` is a product attribute, not another top-level category.
+`commerceDomain` selects the broad purchase flow. `categoryId` is a stable, lowercase taxonomy path that identifies the comparable product type. Each leaf category has a versioned schema that declares its product and variant attributes. A shoe may require `size` and `color`; a smartphone may require `storage` and `color`. The consumer agent and MCP use canonical attribute names rather than merchant-specific CSV headers.
 
 ---
 
@@ -124,7 +123,9 @@ These four values are the complete MVP top-level taxonomy. A narrower concern su
 ```ts
 type UserIntent = {
   intentId: string;
-  category: ProductCategory;
+  query: string;
+  commerceDomain: CommerceDomain;
+  categoryId: CategoryId | null;
   budgetMax: number;
   currency: CurrencyCode;
   quantity: number;
@@ -137,22 +138,26 @@ type UserIntent = {
 
 ### 4.2 Validation rules
 
-- `intentId`, `category`, `budgetMax`, `currency`, and `quantity` are required.
-- `category` must be one of `physical_goods`, `digital_products`, `services`, or `bookings_experiences`.
+- `intentId`, `query`, `commerceDomain`, `categoryId`, `budgetMax`, `currency`, and `quantity` are required. Use `null` when no leaf category is known.
+- `commerceDomain` must be `retail_goods`, `services_subscriptions`, or `bookings`.
+- `categoryId`, when present, must be a canonical taxonomy path returned by the category API.
 - `intentId` must be a UUID.
+- `query` must preserve the user's normalized shopping request for text matching.
 - `budgetMax` must be greater than zero.
 - `quantity` must be an integer greater than or equal to one.
 - Use `[]` when there is no brand preference.
 - Use `{}` when there are no required product attributes.
 - If the user gives a relative deadline such as `today`, TIM converts it to an absolute timestamp before calling the backend.
-- If a category requires an attribute such as shoe size, TIM asks for it before requesting offers.
+- If the selected category schema requires an attribute such as shoe size, TIM asks for it before requesting offers.
 
 ### 4.3 Example
 
 ```json
 {
   "intentId": "4f7a347c-3f30-4db0-9f85-3b6e9f182116",
-  "category": "physical_goods",
+  "query": "Nike basketball shoes",
+  "commerceDomain": "retail_goods",
+  "categoryId": "retail_goods.apparel.shoes",
   "budgetMax": 180.0,
   "currency": "SGD",
   "quantity": 1,
@@ -187,6 +192,9 @@ type Offer = {
 
   productId: string;
   productName: string;
+  variantId: string;
+  commerceDomain: CommerceDomain;
+  categoryId: CategoryId;
 
   listedPrice: number;
   offeredPrice: number;
@@ -228,6 +236,9 @@ type Offer = {
   "merchantName": "NUS Sneaker Hub",
   "productId": "e4193e0a-5638-472d-8320-b1c71ac9fb62",
   "productName": "Nike GT Cut 3",
+  "variantId": "b1111111-1111-4111-8111-111111111111",
+  "commerceDomain": "retail_goods",
+  "categoryId": "retail_goods.apparel.shoes",
   "listedPrice": 195.0,
   "offeredPrice": 175.0,
   "currency": "SGD",
@@ -411,7 +422,9 @@ type ProductSearchResult = {
   merchantName: string;
   productName: string;
   brand: string | null;
-  category: ProductCategory;
+  commerceDomain: CommerceDomain;
+  categoryId: CategoryId;
+  variantId: string;
   listedPrice: number;
   currency: CurrencyCode;
   matchedAttributes: ProductAttributes;
@@ -446,7 +459,7 @@ type CheckInventoryRequest = {
 type CheckInventoryData = {
   available: boolean;
   quantityAvailable: number;
-  variantKey: string;
+  variantId: string | null;
   checkedAt: string;
 };
 ```
@@ -647,16 +660,20 @@ The response must contain one valid offer: Merchant B at S$175.
 
 These endpoints belong to SANGYOON's domain. TIM does not call them during the consumer purchase flow.
 
-| Operation              | REST endpoint                                         |
-| ---------------------- | ----------------------------------------------------- |
-| Create merchant        | `POST /v1/merchants`                                  |
-| Create product         | `POST /v1/merchants/{merchantId}/products`            |
-| Update product         | `PATCH /v1/products/{productId}`                      |
-| Update inventory       | `PUT /v1/products/{productId}/inventory/{variantKey}` |
-| Configure pricing      | `PUT /v1/products/{productId}/pricing-policy`         |
-| List merchant products | `GET /v1/merchants/{merchantId}/products`             |
+| Operation                    | REST endpoint                                     |
+| ---------------------------- | ------------------------------------------------- |
+| List categories              | `GET /v1/categories`                              |
+| Get category schema          | `GET /v1/categories/{categoryId}/schema`          |
+| Create merchant              | `POST /v1/merchants`                              |
+| Create product with variants | `POST /v1/merchants/{merchantId}/products`        |
+| Update product               | `PATCH /v1/products/{productId}`                  |
+| Update variant inventory     | `PUT /v1/variants/{variantId}/inventory`          |
+| Configure pricing            | `PUT /v1/products/{productId}/pricing-policy`     |
+| List merchant products       | `GET /v1/merchants/{merchantId}/products`         |
+| Save CSV mapping profile     | `POST /v1/merchants/{merchantId}/import-profiles` |
+| List CSV mapping profiles    | `GET /v1/merchants/{merchantId}/import-profiles`  |
 
-The MVP must demonstrate merchant onboarding through one simple form, API walkthrough, or CSV import. A polished merchant dashboard is not required.
+Merchant forms are generated from the selected category schema. Different CSV headers are mapped once to canonical paths and saved in a versioned merchant import profile. Raw source headers must not leak into search, offers, or MCP contracts. CSV parsing and row import execution are a later UI/import-worker phase; the taxonomy, validation, and reusable mapping boundary are implemented now.
 
 ---
 
@@ -687,6 +704,8 @@ User sends a message
 ### Shared contract
 
 - [ ] TIM and SANGYOON use the same Zod schemas and inferred TypeScript types.
+- [x] Search and offers use canonical commerce domains, category IDs, and stable variant IDs.
+- [x] Category schemas separate shoe, smartphone, service, and booking attributes.
 - [ ] All timestamps include a timezone.
 - [ ] All transport fields use `camelCase`.
 - [ ] MCP tool names exactly match this document.
@@ -735,3 +754,4 @@ A change marked `Backward compatible: no` must not be merged until both owners a
 ### Change log
 
 - `2026-08-29` - v1.0 initial contract frozen and aligned with the TypeScript repository architecture.
+- `2026-08-30` - v1.1 replaced the rigid four-value product category with commerce domains, hierarchical category IDs, versioned category schemas, and stable variant IDs. Added the category/form and CSV mapping profile endpoints.

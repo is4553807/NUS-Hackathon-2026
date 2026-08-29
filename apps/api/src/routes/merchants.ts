@@ -5,6 +5,7 @@ import {
   CreateMerchantBodySchema,
   CreateProductBodySchema,
   MerchantIdParamsSchema,
+  SaveImportProfileBodySchema,
 } from "../schemas/merchant-commerce.js";
 import {
   defaultCommerceApiServices,
@@ -32,6 +33,22 @@ export function createMerchantsRoutes(
       const { merchantId } = MerchantIdParamsSchema.parse(request.params);
       const products = await services.listMerchantProducts(merchantId);
       return reply.send(successResponse({ products }));
+    });
+
+    app.post("/:merchantId/import-profiles", async (request, reply) => {
+      const { merchantId } = MerchantIdParamsSchema.parse(request.params);
+      const input = SaveImportProfileBodySchema.parse(request.body);
+      const profile = await services.saveImportProfile({
+        merchantId,
+        ...input,
+      });
+      return reply.status(201).send(successResponse(profile));
+    });
+
+    app.get("/:merchantId/import-profiles", async (request, reply) => {
+      const { merchantId } = MerchantIdParamsSchema.parse(request.params);
+      const profiles = await services.listImportProfiles(merchantId);
+      return reply.send(successResponse({ profiles }));
     });
   };
 }
