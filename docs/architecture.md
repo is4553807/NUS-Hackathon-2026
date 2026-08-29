@@ -42,4 +42,4 @@ Circular dependencies are not allowed.
 
 ## Current phase
 
-Only the repository foundation and shared transport schemas are implemented. Product and transaction behavior remains in later feature phases.
+The repository foundation, shared transport schemas, Commerce database, and core Merchant/Catalog/Inventory/Pricing domain services are implemented. Transport adapters, product search, offers, orders, and payments remain in later feature phases.

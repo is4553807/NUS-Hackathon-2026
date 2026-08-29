@@ -2,7 +2,7 @@
 
 Conversational commerce prototype for the Visa x NUS Hackathon. The repository is a TypeScript monorepo that separates user-facing applications, transport adapters, shared contracts, and reusable domain packages so TIM and SANGYOON can develop in parallel.
 
-This initial repository contains only the bootable foundation, shared transport validation, and application shells. Commerce, agent, merchant, order, and payment business behavior is intentionally not implemented yet.
+The repository foundation, shared transport validation, Commerce database, and core Merchant/Catalog/Inventory/Pricing services are implemented. Search, offer, order, payment, and agent behavior remain in later phases.
 
 ## Architecture
 
@@ -158,4 +158,4 @@ pnpm db:studio
 
 ## Current implementation status
 
-The Commerce database schema and fixed four-category taxonomy are implemented. Product search, dynamic pricing, offer generation, agent behavior, order creation, payment simulation, and remote MCP transport remain in later feature phases.
+The Commerce database schema, fixed four-category taxonomy, demo seed, and reusable Merchant, Catalog, Inventory, and Pricing domain services are implemented. These services are transport-independent and will be shared by the REST API and Commerce MCP adapters. Product search, dynamic offer generation, agent behavior, order creation, payment simulation, and remote MCP transport remain in later feature phases.
