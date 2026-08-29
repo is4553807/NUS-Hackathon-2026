@@ -10,7 +10,7 @@ import {
 import { OfferSchema } from "./offer.js";
 import { OrderRequestSchema } from "./order-request.js";
 import { PaymentResultSchema } from "./payment-result.js";
-import { UserIntentSchema } from "./user-intent.js";
+import { ProductCategorySchema, UserIntentSchema } from "./user-intent.js";
 
 export const SearchProductsRequestSchema = z.object({
   intent: UserIntentSchema,
@@ -22,7 +22,7 @@ export const ProductSearchResultSchema = z.object({
   merchantName: z.string().trim().min(1),
   productName: z.string().trim().min(1),
   brand: z.string().trim().min(1).nullable(),
-  category: z.string().trim().min(1),
+  category: ProductCategorySchema,
   listedPrice: MoneySchema,
   currency: CurrencyCodeSchema,
   matchedAttributes: ProductAttributesSchema,

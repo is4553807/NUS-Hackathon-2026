@@ -23,6 +23,32 @@ enum InventoryAvailability {
   @@map("inventory_availability")
 }
 
+enum ProductCategory {
+  PHYSICAL_GOODS       @map("physical_goods")
+  DIGITAL_PRODUCTS     @map("digital_products")
+  SERVICES             @map("services")
+  BOOKINGS_EXPERIENCES @map("bookings_experiences")
+
+  @@map("product_category")
+}
+
+enum DigitalDeliveryMethod {
+  DOWNLOAD       @map("download")
+  LICENSE_KEY    @map("license_key")
+  STREAMING      @map("streaming")
+  ACCOUNT_ACCESS @map("account_access")
+
+  @@map("digital_delivery_method")
+}
+
+enum ServiceDeliveryMode {
+  IN_PERSON @map("in_person")
+  REMOTE    @map("remote")
+  HYBRID    @map("hybrid")
+
+  @@map("service_delivery_mode")
+}
+
 enum OfferStatus {
   ACTIVE    @map("active")
   EXPIRED   @map("expired")
@@ -74,29 +100,109 @@ model Merchant {
 }
 
 model Product {
-  id          String   @id @default(uuid()) @db.Uuid
-  merchantId  String   @map("merchant_id") @db.Uuid
-  name        String   @db.VarChar(255)
+  id          String          @id @default(uuid()) @db.Uuid
+  merchantId  String          @map("merchant_id") @db.Uuid
+  name        String          @db.VarChar(255)
   description String?
-  category    String?  @db.VarChar(255)
-  brand       String?  @db.VarChar(255)
-  listedPrice Decimal  @map("listed_price") @db.Decimal(12, 2)
-  currency    String   @default("SGD") @db.Char(3)
-  attributes  Json?    @db.JsonB
-  imageUrl    String?  @map("image_url")
-  active      Boolean  @default(true)
-  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+  category    ProductCategory
+  brand       String?         @db.VarChar(255)
+  listedPrice Decimal         @map("listed_price") @db.Decimal(12, 2)
+  currency    String          @default("SGD") @db.Char(3)
+  imageUrl    String?         @map("image_url")
+  active      Boolean         @default(true)
+  createdAt   DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime        @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  merchant      Merchant       @relation(fields: [merchantId], references: [id], onDelete: Restrict)
-  inventory     Inventory[]
-  pricingPolicy PricingPolicy?
-  offers        Offer[]
-  orders        Order[]
+  merchant                 Merchant                  @relation(fields: [merchantId], references: [id], onDelete: Restrict)
+  physicalGoodDetails      PhysicalGoodDetails?
+  digitalProductDetails    DigitalProductDetails?
+  serviceDetails           ServiceDetails?
+  bookingExperienceDetails BookingExperienceDetails?
+  inventory                Inventory[]
+  pricingPolicy            PricingPolicy?
+  offers                   Offer[]
+  orders                   Order[]
 
   @@index([merchantId, active])
   @@index([category, brand, active])
   @@map("products")
+}
+
+model PhysicalGoodDetails {
+  productId        String   @id @map("product_id") @db.Uuid
+  sku              String?  @unique @db.VarChar(100)
+  sizeOptions      String[] @default([]) @map("size_options")
+  colorOptions     String[] @default([]) @map("color_options")
+  material         String?  @db.VarChar(255)
+  weightGrams      Int?     @map("weight_grams")
+  lengthCm         Decimal? @map("length_cm") @db.Decimal(8, 2)
+  widthCm          Decimal? @map("width_cm") @db.Decimal(8, 2)
+  heightCm         Decimal? @map("height_cm") @db.Decimal(8, 2)
+  shippingRequired Boolean  @default(true) @map("shipping_required")
+  metadata         Json?    @db.JsonB
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@map("physical_good_details")
+}
+
+model DigitalProductDetails {
+  productId          String                @id @map("product_id") @db.Uuid
+  deliveryMethod     DigitalDeliveryMethod @map("delivery_method")
+  fileFormat         String?               @map("file_format") @db.VarChar(100)
+  fileSizeBytes      BigInt?               @map("file_size_bytes")
+  version            String?               @db.VarChar(100)
+  licenseRequired    Boolean               @default(false) @map("license_required")
+  accessDurationDays Int?                  @map("access_duration_days")
+  fulfillmentUrl     String?               @map("fulfillment_url")
+  metadata           Json?                 @db.JsonB
+  createdAt          DateTime              @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt          DateTime              @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@map("digital_product_details")
+}
+
+model ServiceDetails {
+  productId       String              @id @map("product_id") @db.Uuid
+  serviceType     String              @map("service_type") @db.VarChar(150)
+  deliveryMode    ServiceDeliveryMode @map("delivery_mode")
+  durationMinutes Int                 @map("duration_minutes")
+  location        String?
+  serviceAreas    String[]            @default([]) @map("service_areas")
+  providerName    String?             @map("provider_name") @db.VarChar(255)
+  bookingRequired Boolean             @default(true) @map("booking_required")
+  metadata        Json?               @db.JsonB
+  createdAt       DateTime            @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime            @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@map("service_details")
+}
+
+model BookingExperienceDetails {
+  productId       String   @id @map("product_id") @db.Uuid
+  experienceType  String?  @map("experience_type") @db.VarChar(150)
+  destination     String   @db.VarChar(255)
+  venue           String?  @db.VarChar(255)
+  startsAt        DateTime @map("starts_at") @db.Timestamptz(3)
+  endsAt          DateTime @map("ends_at") @db.Timestamptz(3)
+  timezone        String   @default("Asia/Singapore") @db.VarChar(100)
+  capacity        Int
+  minParticipants Int      @default(1) @map("min_participants")
+  meetingPoint    String?  @map("meeting_point")
+  metadata        Json?    @db.JsonB
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([destination, startsAt])
+  @@map("booking_experience_details")
 }
 
 model Inventory {

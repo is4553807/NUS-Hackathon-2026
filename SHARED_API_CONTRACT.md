@@ -91,10 +91,25 @@ Only mock tokens, provider-issued tokens, or non-sensitive payment references ma
 ```ts
 type CurrencyCode = "SGD";
 
+type ProductCategory =
+  "physical_goods" | "digital_products" | "services" | "bookings_experiences";
+
 type ProductAttributeValue = string | number | boolean;
 
 type ProductAttributes = Record<string, ProductAttributeValue>;
 ```
+
+### 3.4 Fixed MVP product categories
+
+| UI label               | API and database value | Category-specific details                                                                  |
+| ---------------------- | ---------------------- | ------------------------------------------------------------------------------------------ |
+| Physical Goods         | `physical_goods`       | SKU, sizes, colors, material, weight, dimensions, and shipping requirement                 |
+| Digital Products       | `digital_products`     | Delivery method, file format/size, version, licence, and access duration                   |
+| Services               | `services`             | Service type, delivery mode, duration, location/service areas, and provider                |
+| Bookings & Experiences | `bookings_experiences` | Experience type, destination, venue, start/end time, timezone, capacity, and meeting point |
+
+These four values are the complete MVP top-level taxonomy. A narrower concern such as
+`basketball_shoes` is a product attribute, not another top-level category.
 
 ---
 
@@ -109,7 +124,7 @@ type ProductAttributes = Record<string, ProductAttributeValue>;
 ```ts
 type UserIntent = {
   intentId: string;
-  category: string;
+  category: ProductCategory;
   budgetMax: number;
   currency: CurrencyCode;
   quantity: number;
@@ -123,6 +138,7 @@ type UserIntent = {
 ### 4.2 Validation rules
 
 - `intentId`, `category`, `budgetMax`, `currency`, and `quantity` are required.
+- `category` must be one of `physical_goods`, `digital_products`, `services`, or `bookings_experiences`.
 - `intentId` must be a UUID.
 - `budgetMax` must be greater than zero.
 - `quantity` must be an integer greater than or equal to one.
@@ -136,7 +152,7 @@ type UserIntent = {
 ```json
 {
   "intentId": "4f7a347c-3f30-4db0-9f85-3b6e9f182116",
-  "category": "basketball_shoes",
+  "category": "physical_goods",
   "budgetMax": 180.0,
   "currency": "SGD",
   "quantity": 1,
@@ -395,7 +411,7 @@ type ProductSearchResult = {
   merchantName: string;
   productName: string;
   brand: string | null;
-  category: string;
+  category: ProductCategory;
   listedPrice: number;
   currency: CurrencyCode;
   matchedAttributes: ProductAttributes;

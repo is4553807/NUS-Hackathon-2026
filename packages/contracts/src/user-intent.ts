@@ -8,9 +8,18 @@ import {
   UuidSchema,
 } from "./common.js";
 
+export const PRODUCT_CATEGORIES = [
+  "physical_goods",
+  "digital_products",
+  "services",
+  "bookings_experiences",
+] as const;
+
+export const ProductCategorySchema = z.enum(PRODUCT_CATEGORIES);
+
 export const UserIntentSchema = z.object({
   intentId: UuidSchema,
-  category: z.string().trim().min(1),
+  category: ProductCategorySchema,
   budgetMax: MoneySchema.positive(),
   currency: CurrencyCodeSchema,
   quantity: z.number().int().min(1),
@@ -20,4 +29,5 @@ export const UserIntentSchema = z.object({
   deliveryDeadline: TimestampSchema.nullable(),
 });
 
+export type ProductCategory = z.infer<typeof ProductCategorySchema>;
 export type UserIntent = z.infer<typeof UserIntentSchema>;
