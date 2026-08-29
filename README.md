@@ -156,6 +156,21 @@ pnpm db:studio
 
 `pnpm db:seed` is idempotent. It creates or updates the fixed demo merchants, products, category details, inventory variants, and pricing policies without deleting unrelated local data.
 
+## Merchant REST API
+
+The structured Merchant form uses these implemented endpoints:
+
+| Operation              | Method  | Endpoint                                          |
+| ---------------------- | ------- | ------------------------------------------------- |
+| Create merchant        | `POST`  | `/v1/merchants`                                   |
+| Create product         | `POST`  | `/v1/merchants/{merchantId}/products`             |
+| List merchant products | `GET`   | `/v1/merchants/{merchantId}/products`             |
+| Update product         | `PATCH` | `/v1/products/{productId}`                        |
+| Update inventory       | `PUT`   | `/v1/products/{productId}/inventory/{variantKey}` |
+| Configure pricing      | `PUT`   | `/v1/products/{productId}/pricing-policy`         |
+
+`variantKey` must be URL-encoded when it contains spaces, semicolons, or equals signs. Successful and failed requests use the shared response envelope defined in `packages/contracts`.
+
 ## Current implementation status
 
-The Commerce database schema, fixed four-category taxonomy, demo seed, and reusable Merchant, Catalog, Inventory, and Pricing domain services are implemented. These services are transport-independent and will be shared by the REST API and Commerce MCP adapters. Product search, dynamic offer generation, agent behavior, order creation, payment simulation, and remote MCP transport remain in later feature phases.
+The Commerce database schema, fixed four-category taxonomy, demo seed, reusable Merchant/Catalog/Inventory/Pricing domain services, and Merchant REST API are implemented. Product search, dynamic offer generation, agent behavior, order creation, payment simulation, and remote MCP transport remain in later feature phases.

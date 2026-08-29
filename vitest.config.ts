@@ -8,6 +8,9 @@ export default defineConfig({
       "@visa-commerce/contracts": fileURLToPath(
         new URL("./packages/contracts/src/index.ts", import.meta.url),
       ),
+      "@visa-commerce/commerce": fileURLToPath(
+        new URL("./packages/commerce/src/index.ts", import.meta.url),
+      ),
       "@visa-commerce/db": fileURLToPath(
         new URL("./packages/db/src/index.ts", import.meta.url),
       ),
