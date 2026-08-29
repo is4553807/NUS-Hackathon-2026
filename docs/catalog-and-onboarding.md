@@ -89,13 +89,13 @@ The Merchant workspace implements this flow. SKU and external-ID fields are hidd
 
 ### CSV onboarding
 
-1. Read only the CSV header row first.
+1. Read the CSV locally and reject malformed files, duplicate headers, oversized files, or more than 2,000 rows.
 2. Ask the merchant to select a category.
 3. Suggest mappings using normalized header names and the category schema's aliases.
 4. Show unresolved required fields and let the merchant correct them.
-5. Save the approved mapping through `POST /v1/merchants/{merchantId}/import-profiles`.
-6. Validate every row against the same schema before any catalog write.
-7. Show accepted/rejected row counts and row-level errors.
+5. Preview the mapping through `POST /v1/merchants/{merchantId}/catalog-imports/preview`.
+6. Validate every row against the same schema before starting the import; stop the file on a row-level error instead of silently dropping data.
+7. Execute the approved import through `POST /v1/merchants/{merchantId}/catalog-imports` and save its reusable profile.
 8. Reuse the saved mapping for later uploads with the same feed format.
 
 Example mappings for two merchants can differ while the stored data stays identical:
@@ -109,6 +109,12 @@ Example mappings for two merchants can differ while the stored data stays identi
 | `unit_price_sgd` | `variant.listedPrice`        |
 
 The raw merchant headers stop at the import boundary. The consumer agent and MCP tools see only canonical domain, category, product, variant, and attribute names.
+
+### Why code first, with AI only as a fallback
+
+Known core fields, category attribute names, saved profiles, and aliases are mapped with deterministic code. This is faster, cheaper, reproducible, and auditable, and it keeps the Merchant's catalog out of an external model call. AI should be added later only for headers that remain unresolved after those rules. Any AI suggestion must choose from the category's allowed canonical targets, return structured output, show its confidence, and require Merchant approval before a database write. The importer must continue to work when the AI service is unavailable.
+
+Inventory export uses canonical column names and protects spreadsheet applications from formula-injection values. Computed remaining stock and internal platform IDs are exported for reconciliation but are not accepted as writable catalog mappings.
 
 ## Standardization rules
 

@@ -1016,6 +1016,8 @@
 .headingActions {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
   gap: 9px;
 }
 
@@ -1063,6 +1065,7 @@
   border-color: var(--line);
   color: #526078;
   background: #fff;
+  text-decoration: none;
 }
 
 .secondaryButton:hover:not(:disabled) {
@@ -1387,6 +1390,105 @@
   margin-top: 12px;
 }
 
+.importIntro {
+  padding: 13px 14px;
+  border: 1px solid #cfe4de;
+  border-radius: 10px;
+  background: #f3faf8;
+}
+
+.importIntro strong {
+  color: #176c59;
+  font-size: 10px;
+}
+
+.importIntro p {
+  margin: 5px 0 0;
+  color: #6e817c;
+  font-size: 9px;
+  line-height: 1.55;
+}
+
+.importReview {
+  overflow: hidden;
+  border: 1px solid #dfe5ef;
+  border-radius: 11px;
+}
+
+.importReviewHeading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 14px;
+  background: #f8faff;
+}
+
+.importReviewHeading > div {
+  display: grid;
+  gap: 4px;
+}
+
+.importReviewHeading strong {
+  color: var(--ink);
+  font-size: 10px;
+}
+
+.importReviewHeading small,
+.importReviewHeading > span {
+  color: #8490a5;
+  font-size: 8px;
+}
+
+.importReviewHeading > span {
+  padding: 5px 7px;
+  border-radius: 999px;
+  color: var(--blue);
+  background: var(--blue-pale);
+  font-weight: 750;
+}
+
+.importMappingTable {
+  display: grid;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.importMappingTable label {
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) 18px minmax(0, 1.2fr);
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-top: 1px solid #edf0f5;
+}
+
+.importMappingTable code {
+  overflow: hidden;
+  color: #536078;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 8px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.importMappingTable label > span {
+  color: #a0a9b8;
+  font-size: 10px;
+  text-align: center;
+}
+
+.importMappingTable select {
+  width: 100%;
+  min-height: 32px;
+  padding: 6px 8px;
+  border: 1px solid #dce2ec;
+  border-radius: 7px;
+  color: #536078;
+  background: #fff;
+  font-size: 8px;
+}
+
 .checkField,
 .checkFieldWide,
 .switchField {
@@ -1674,7 +1776,7 @@
   }
 
   .headingActions {
-    justify-content: space-between;
+    justify-content: flex-start;
   }
 
   .filterRow {
@@ -1714,6 +1816,19 @@
 
   .advancedFieldsGrid {
     grid-template-columns: 1fr;
+  }
+
+  .importReviewHeading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .importMappingTable label {
+    grid-template-columns: 1fr;
+  }
+
+  .importMappingTable label > span {
+    display: none;
   }
 
   .formFooter {

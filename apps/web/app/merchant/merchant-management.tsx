@@ -10,6 +10,7 @@ import {
 } from "react";
 
 import type {
+  CatalogImportPreview,
   CategoryAttributeDefinition,
   CategorySchema,
   MerchantProduct,
@@ -19,7 +20,9 @@ import type {
 import {
   configureMerchantPricingAction,
   createMerchantProductAction,
+  executeCatalogImportAction,
   getMerchantPricingPolicyAction,
+  previewCatalogImportAction,
   updateMerchantProductAction,
   updateMerchantVariantAction,
 } from "./actions";
@@ -460,6 +463,272 @@ function buildDetails(
     timezone: requiredText(formData, "details.timezone"),
     meetingPoint: nullableText(formData, "details.meetingPoint"),
   };
+}
+
+export function ImportCsvButton({
+  merchantId,
+  schemas,
+}: {
+  merchantId: string;
+  schemas: CategorySchema[];
+}) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [categoryId, setCategoryId] = useState(schemas[0]?.categoryId ?? "");
+  const [fileName, setFileName] = useState("");
+  const [csvText, setCsvText] = useState("");
+  const [preview, setPreview] = useState<CatalogImportPreview | null>(null);
+  const [columnMapping, setColumnMapping] = useState<Record<string, string>>(
+    {},
+  );
+  const [mappingDirty, setMappingDirty] = useState(false);
+  const [feedback, setFeedback] = useState<Feedback>(null);
+  const [pending, startTransition] = useTransition();
+
+  function resetPreview(): void {
+    setPreview(null);
+    setColumnMapping({});
+    setMappingDirty(false);
+    setFeedback(null);
+  }
+
+  async function chooseFile(file: File | undefined): Promise<void> {
+    resetPreview();
+    if (file === undefined) {
+      setFileName("");
+      setCsvText("");
+      return;
+    }
+    if (!file.name.toLocaleLowerCase("en").endsWith(".csv")) {
+      setFileName("");
+      setCsvText("");
+      setFeedback({ tone: "error", message: "Choose a .csv file." });
+      return;
+    }
+    if (file.size > 1_000_000) {
+      setFileName("");
+      setCsvText("");
+      setFeedback({
+        tone: "error",
+        message: "The CSV must be 1 MB or smaller for this prototype.",
+      });
+      return;
+    }
+    setFileName(file.name);
+    setCsvText(await file.text());
+  }
+
+  function reviewCsv(mapping?: Record<string, string>): void {
+    if (categoryId.length === 0 || csvText.length === 0) return;
+    setFeedback(null);
+    startTransition(async () => {
+      const result = await previewCatalogImportAction({
+        merchantId,
+        categoryId,
+        fileName,
+        csvText,
+        ...(mapping === undefined ? {} : { columnMapping: mapping }),
+      });
+      if (!result.success) {
+        setFeedback({ tone: "error", message: result.message });
+        return;
+      }
+      setPreview(result.data);
+      setColumnMapping(result.data.columnMapping);
+      setMappingDirty(false);
+      setFeedback({
+        tone: result.data.canImport ? "success" : "error",
+        message: result.data.canImport
+          ? "The mapping is valid and ready to import."
+          : `Map the required fields: ${result.data.missingRequiredTargets.join(", ")}.`,
+      });
+    });
+  }
+
+  function importCsv(): void {
+    if (preview === null || !preview.canImport || mappingDirty) return;
+    setFeedback(null);
+    startTransition(async () => {
+      const result = await executeCatalogImportAction({
+        merchantId,
+        categoryId,
+        fileName,
+        csvText,
+        columnMapping,
+      });
+      setFeedback({
+        tone: result.success ? "success" : "error",
+        message: result.message,
+      });
+      if (result.success) {
+        router.refresh();
+        setPreview(null);
+        setCsvText("");
+        setFileName("");
+      }
+    });
+  }
+
+  return (
+    <>
+      <button
+        className={styles.secondaryButton}
+        disabled={schemas.length === 0}
+        onClick={() => setOpen(true)}
+        type="button"
+      >
+        Import CSV
+      </button>
+      {open ? (
+        <Modal
+          description="Upload an existing product sheet and map it into one canonical category."
+          eyebrow="Bulk catalog onboarding"
+          onClose={() => setOpen(false)}
+          title="Import products from CSV"
+          wide
+        >
+          <div className={styles.managementForm}>
+            <div className={styles.importIntro}>
+              <strong>Deterministic by default</strong>
+              <p>
+                Product data stays in your Commerce service. Known headers and
+                category aliases are matched without an AI call; you review any
+                uncertain columns before import.
+              </p>
+            </div>
+
+            <div className={styles.formGrid}>
+              <label className={styles.field}>
+                <span>
+                  Product category <em>Required</em>
+                </span>
+                <select
+                  onChange={(event) => {
+                    setCategoryId(event.target.value);
+                    resetPreview();
+                  }}
+                  value={categoryId}
+                >
+                  {schemas.map((schema) => (
+                    <option key={schema.categoryId} value={schema.categoryId}>
+                      {schema.name} · {fieldLabel(schema.commerceDomain)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className={styles.field}>
+                <span>
+                  CSV file <em>Required</em>
+                </span>
+                <input
+                  accept=".csv,text/csv"
+                  onChange={(event) => {
+                    void chooseFile(event.target.files?.[0]);
+                  }}
+                  type="file"
+                />
+                <small>Maximum 1 MB and 2,000 data rows.</small>
+              </label>
+            </div>
+
+            {preview === null ? null : (
+              <div className={styles.importReview}>
+                <div className={styles.importReviewHeading}>
+                  <div>
+                    <strong>{preview.rowCount} rows detected</strong>
+                    <small>
+                      {preview.categoryName} schema · v{preview.schemaVersion}
+                    </small>
+                  </div>
+                  <span>
+                    {Object.keys(columnMapping).length}/{preview.headers.length}
+                    columns mapped
+                  </span>
+                </div>
+                <div className={styles.importMappingTable}>
+                  {preview.headers.map((header) => {
+                    const usedTargets = new Set(
+                      Object.entries(columnMapping)
+                        .filter(([source]) => source !== header)
+                        .map(([, target]) => target),
+                    );
+                    return (
+                      <label key={header}>
+                        <code>{header}</code>
+                        <span aria-hidden="true">→</span>
+                        <select
+                          onChange={(event) => {
+                            const target = event.target.value;
+                            setColumnMapping((current) => {
+                              const next = { ...current };
+                              if (target.length === 0) delete next[header];
+                              else next[header] = target;
+                              return next;
+                            });
+                            setMappingDirty(true);
+                            setFeedback(null);
+                          }}
+                          value={columnMapping[header] ?? ""}
+                        >
+                          <option value="">Ignore this column</option>
+                          {preview.targets.map((option) => (
+                            <option
+                              disabled={usedTargets.has(option.target)}
+                              key={option.target}
+                              value={option.target}
+                            >
+                              {option.label}
+                              {option.required ? " · Required" : ""}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            <FeedbackMessage feedback={feedback} />
+            <div className={styles.formFooter}>
+              <button
+                className={styles.secondaryButton}
+                onClick={() => setOpen(false)}
+                type="button"
+              >
+                Close
+              </button>
+              {preview === null || mappingDirty ? (
+                <button
+                  className={styles.primaryButton}
+                  disabled={pending || csvText.length === 0}
+                  onClick={() =>
+                    reviewCsv(preview === null ? undefined : columnMapping)
+                  }
+                  type="button"
+                >
+                  {pending
+                    ? "Checking…"
+                    : preview === null
+                      ? "Review CSV"
+                      : "Validate mapping"}
+                </button>
+              ) : (
+                <button
+                  className={styles.primaryButton}
+                  disabled={pending || !preview.canImport}
+                  onClick={importCsv}
+                  type="button"
+                >
+                  {pending ? "Importing…" : `Import ${preview.rowCount} rows`}
+                </button>
+              )}
+            </div>
+          </div>
+        </Modal>
+      ) : null}
+    </>
+  );
 }
 
 export function AddProductButton({

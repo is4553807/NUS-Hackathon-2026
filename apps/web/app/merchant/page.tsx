@@ -11,6 +11,7 @@ import {
 
 import {
   AddProductButton,
+  ImportCsvButton,
   ProductManagementActions,
   VariantManagementButton,
 } from "./merchant-management";
@@ -470,6 +471,17 @@ export default async function MerchantHomePage({
                 <span className={styles.countBadge}>
                   {filteredProducts.length} shown
                 </span>
+                <a
+                  className={styles.secondaryButton}
+                  download
+                  href={`/merchant/inventory-export?merchantId=${encodeURIComponent(selectedMerchant.merchantId)}`}
+                >
+                  Export CSV
+                </a>
+                <ImportCsvButton
+                  merchantId={selectedMerchant.merchantId}
+                  schemas={categorySchemas}
+                />
                 <AddProductButton
                   merchantId={selectedMerchant.merchantId}
                   schemas={categorySchemas}

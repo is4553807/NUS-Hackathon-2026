@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 
 import type {
+  CatalogImportPreview,
+  CatalogImportResult,
   MerchantProduct,
   PricingPolicy,
   ProductVariant,
@@ -70,6 +72,14 @@ type PricingMutation = {
   minimumPrice?: number | null;
   maxDiscountPercent?: number | null;
   inventoryDiscountEnabled?: boolean;
+};
+
+type CatalogImportMutation = {
+  merchantId: string;
+  categoryId: string;
+  fileName: string;
+  csvText: string;
+  columnMapping?: Record<string, string>;
 };
 
 export type MerchantActionResult<T = undefined> =
@@ -150,6 +160,43 @@ export async function createMerchantProductAction(
       ),
     );
     return success(product, `${product.name} was added to the catalog.`);
+  } catch (error) {
+    return failure(error);
+  }
+}
+
+export async function previewCatalogImportAction(
+  input: CatalogImportMutation,
+): Promise<MerchantActionResult<CatalogImportPreview>> {
+  try {
+    const { merchantId, ...body } = input;
+    const preview = await commerceRequest<CatalogImportPreview>(
+      `/v1/merchants/${encodeURIComponent(merchantId)}/catalog-imports/preview`,
+      { method: "POST", body: JSON.stringify(body) },
+    );
+    return {
+      success: true,
+      data: preview,
+      message: `${preview.rowCount} CSV rows are ready to review.`,
+    };
+  } catch (error) {
+    return failure(error);
+  }
+}
+
+export async function executeCatalogImportAction(
+  input: CatalogImportMutation & { columnMapping: Record<string, string> },
+): Promise<MerchantActionResult<CatalogImportResult>> {
+  try {
+    const { merchantId, ...body } = input;
+    const result = await commerceRequest<CatalogImportResult>(
+      `/v1/merchants/${encodeURIComponent(merchantId)}/catalog-imports`,
+      { method: "POST", body: JSON.stringify(body) },
+    );
+    return success(
+      result,
+      `${result.importedProductCount} products and ${result.importedVariantCount} variants were imported.`,
+    );
   } catch (error) {
     return failure(error);
   }

@@ -2,7 +2,7 @@
 
 Conversational commerce prototype for the Visa x NUS Hackathon. The repository is a TypeScript monorepo that separates user-facing applications, transport adapters, shared contracts, and reusable domain packages so TIM and SANGYOON can develop in parallel.
 
-The repository foundation, shared transport validation, flexible Commerce catalog, Merchant/Catalog/Inventory/Pricing services, search, offers, orders, a safe mock Visa payment flow, an interactive Merchant catalog workspace, and the Commerce MCP server are implemented. CSV import execution, public MCP deployment, and consumer-agent behavior remain in later phases.
+The repository foundation, shared transport validation, flexible Commerce catalog, Merchant/Catalog/Inventory/Pricing services, search, offers, orders, a safe mock Visa payment flow, an interactive Merchant catalog workspace, rule-based CSV import/export, and the Commerce MCP server are implemented. Public MCP deployment and consumer-agent behavior remain in later phases.
 
 ## Architecture
 
@@ -133,7 +133,7 @@ pnpm dev:telegram
 
 The Telegram process requires `TELEGRAM_BOT_TOKEN`. Without it, the application exits with a clear configuration message.
 
-With PostgreSQL, the API, and the web app running, open [http://localhost:3000/merchant](http://localhost:3000/merchant). The workspace reads and manages merchants, products, variants, inventory, private pricing policies, and saved CSV mappings through the Commerce REST API. `Add product` generates product and variant fields from the selected category schema. Product actions support core edits, private pricing, and reversible pause/resume; inventory rows support stable-ID variant, price, attribute, and stock edits. Use the merchant switcher in the top-right corner to inspect all six sample merchants; `Orchard Tech` is the default because it demonstrates the smartphone schema and reusable CSV mapping flow.
+With PostgreSQL, the API, and the web app running, open [http://localhost:3000/merchant](http://localhost:3000/merchant). The workspace reads and manages merchants, products, variants, inventory, private pricing policies, and saved CSV mappings through the Commerce REST API. `Add product` generates product and variant fields from the selected category schema. `Import CSV` reads up to 2,000 rows, proposes deterministic mappings from known headers and category aliases, requires Merchant review for unresolved fields, validates the file, creates products and inventory, and saves the approved mapping. `Export CSV` downloads the Merchant's current variant-level catalog and inventory with canonical headers. Product actions support core edits, private pricing, and reversible pause/resume; inventory rows support stable-ID variant, price, attribute, and stock edits. Use the merchant switcher in the top-right corner to inspect all six sample merchants; `Orchard Tech` is the default because it demonstrates the smartphone schema and reusable CSV mapping flow.
 
 With PostgreSQL and the MCP server running, its health check is available at [http://127.0.0.1:4100/health](http://127.0.0.1:4100/health). The `/mcp` route is a machine endpoint for MCP clients, not a browser page. `pnpm dev:mcp` automatically reads the repository `.env`; use `pnpm --filter @visa-commerce/mcp-server dev:stdio` when a local MCP client requires `stdio`.
 
@@ -177,21 +177,24 @@ Merchant forms first fetch the selected category schema and generate only the re
 
 The structured Merchant form uses these implemented endpoints:
 
-| Operation                    | Method  | Endpoint                                     |
-| ---------------------------- | ------- | -------------------------------------------- |
-| List catalog categories      | `GET`   | `/v1/categories`                             |
-| Get category form schema     | `GET`   | `/v1/categories/{categoryId}/schema`         |
-| List merchants               | `GET`   | `/v1/merchants`                              |
-| Create merchant              | `POST`  | `/v1/merchants`                              |
-| Create product with variants | `POST`  | `/v1/merchants/{merchantId}/products`        |
-| List merchant products       | `GET`   | `/v1/merchants/{merchantId}/products`        |
-| Save CSV import profile      | `POST`  | `/v1/merchants/{merchantId}/import-profiles` |
-| List CSV import profiles     | `GET`   | `/v1/merchants/{merchantId}/import-profiles` |
-| Update product               | `PATCH` | `/v1/products/{productId}`                   |
-| Update product variant       | `PATCH` | `/v1/variants/{variantId}`                   |
-| Update variant inventory     | `PUT`   | `/v1/variants/{variantId}/inventory`         |
-| Read private pricing         | `GET`   | `/v1/products/{productId}/pricing-policy`    |
-| Configure pricing            | `PUT`   | `/v1/products/{productId}/pricing-policy`    |
+| Operation                    | Method  | Endpoint                                             |
+| ---------------------------- | ------- | ---------------------------------------------------- |
+| List catalog categories      | `GET`   | `/v1/categories`                                     |
+| Get category form schema     | `GET`   | `/v1/categories/{categoryId}/schema`                 |
+| List merchants               | `GET`   | `/v1/merchants`                                      |
+| Create merchant              | `POST`  | `/v1/merchants`                                      |
+| Create product with variants | `POST`  | `/v1/merchants/{merchantId}/products`                |
+| List merchant products       | `GET`   | `/v1/merchants/{merchantId}/products`                |
+| Export inventory CSV         | `GET`   | `/v1/merchants/{merchantId}/inventory.csv`           |
+| Preview CSV import           | `POST`  | `/v1/merchants/{merchantId}/catalog-imports/preview` |
+| Execute CSV import           | `POST`  | `/v1/merchants/{merchantId}/catalog-imports`         |
+| Save CSV import profile      | `POST`  | `/v1/merchants/{merchantId}/import-profiles`         |
+| List CSV import profiles     | `GET`   | `/v1/merchants/{merchantId}/import-profiles`         |
+| Update product               | `PATCH` | `/v1/products/{productId}`                           |
+| Update product variant       | `PATCH` | `/v1/variants/{variantId}`                           |
+| Update variant inventory     | `PUT`   | `/v1/variants/{variantId}/inventory`                 |
+| Read private pricing         | `GET`   | `/v1/products/{productId}/pricing-policy`            |
+| Configure pricing            | `PUT`   | `/v1/products/{productId}/pricing-policy`            |
 
 Successful and failed requests use the shared response envelope defined in `packages/contracts`. Category IDs and variant IDs are stable API values; UI labels and arbitrary CSV headers are not used as database relationships. The Merchant UI archives products with the reversible `active: false` state instead of physically deleting records referenced by orders or payments.
 
@@ -237,4 +240,4 @@ The Agent never receives a provider credential, PAN, or CVV. The database stores
 
 ## Current implementation status
 
-The Commerce database schema, hierarchical taxonomy, versioned category schemas, generic variants, reusable CSV mapping profiles, demo seed, Merchant REST API, schema-generated create/edit forms, product pause/resume, variant and inventory editing, private pricing controls, product discovery, inventory matching, deterministic pricing, time-limited Offer generation, explicit confirmation, idempotent Order creation, saved payment methods, mock Visa authorization, and Streamable HTTP/stdio MCP transports are implemented. CSV file parsing/import execution, public MCP deployment, consumer-agent behavior, and identity-verification completion remain in later feature phases.
+The Commerce database schema, hierarchical taxonomy, versioned category schemas, generic variants, reusable CSV mapping profiles, validated CSV import and inventory export, demo seed, Merchant REST API, schema-generated create/edit forms, product pause/resume, variant and inventory editing, private pricing controls, product discovery, inventory matching, deterministic pricing, time-limited Offer generation, explicit confirmation, idempotent Order creation, saved payment methods, mock Visa authorization, and Streamable HTTP/stdio MCP transports are implemented. Public MCP deployment, consumer-agent behavior, and identity-verification completion remain in later feature phases.

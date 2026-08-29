@@ -27,7 +27,10 @@ export type BuildAppOptions = {
 };
 
 export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
-  const app = Fastify({ logger: options.logger ?? true });
+  const app = Fastify({
+    logger: options.logger ?? true,
+    bodyLimit: 2_000_000,
+  });
   const commerceServices =
     options.commerceServices ?? defaultCommerceApiServices;
 

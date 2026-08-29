@@ -6,7 +6,9 @@ import {
   calculateAvailableQuantity,
   deriveInventoryAvailability,
   nextAvailableSku,
+  parseCsvText,
   roundMoney,
+  suggestImportMapping,
   validateCategoryAttributes,
   validateImportMapping,
   variantMatchesAttributes,
@@ -145,5 +147,72 @@ describe("merchant-friendly SKU generation", () => {
     expect(
       nextAvailableSku("KRS-GTC3-US10-BLK", new Set(["KRS-GTC3-US10-BLK"])),
     ).toBe("KRS-GTC3-US10-BLK-2");
+  });
+});
+
+describe("CSV catalog onboarding", () => {
+  it("parses quoted commas, escaped quotes, and a UTF-8 BOM", () => {
+    expect(
+      parseCsvText(
+        '\uFEFFproduct_name,description,price\r\n"iPhone 16 Pro","A ""Pro"", phone","1,599"\r\n',
+      ),
+    ).toEqual({
+      headers: ["product_name", "description", "price"],
+      rows: [
+        {
+          product_name: "iPhone 16 Pro",
+          description: 'A "Pro", phone',
+          price: "1,599",
+        },
+      ],
+    });
+  });
+
+  it("maps merchant headers to core and category-specific fields", () => {
+    expect(
+      suggestImportMapping({
+        headers: [
+          "item_title",
+          "unit_price_sgd",
+          "item_type",
+          "model",
+          "storage_size",
+          "colour",
+          "stock_on_hand",
+        ],
+        attributeSchema: {
+          attributes: {
+            productType: {
+              type: "string",
+              scope: "product",
+              required: true,
+              aliases: ["item_type"],
+            },
+            model: { type: "string", scope: "product", required: true },
+            storage: {
+              type: "string",
+              scope: "variant",
+              required: true,
+              aliases: ["storage_size"],
+            },
+            color: {
+              type: "string",
+              scope: "variant",
+              required: true,
+              aliases: ["colour"],
+            },
+          },
+        },
+        productKind: ProductKind.PHYSICAL_GOOD,
+      }),
+    ).toMatchObject({
+      item_title: "product.name",
+      unit_price_sgd: "product.basePrice",
+      item_type: "product.attributes.productType",
+      model: "product.attributes.model",
+      storage_size: "variant.attributes.storage",
+      colour: "variant.attributes.color",
+      stock_on_hand: "inventory.quantityAvailable",
+    });
   });
 });

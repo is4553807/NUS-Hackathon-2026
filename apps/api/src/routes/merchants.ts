@@ -4,7 +4,9 @@ import { successResponse } from "../http/responses.js";
 import {
   CreateMerchantBodySchema,
   CreateProductBodySchema,
+  ExecuteCatalogImportBodySchema,
   MerchantIdParamsSchema,
+  PreviewCatalogImportBodySchema,
   SaveImportProfileBodySchema,
 } from "../schemas/merchant-commerce.js";
 import {
@@ -38,6 +40,38 @@ export function createMerchantsRoutes(
       const { merchantId } = MerchantIdParamsSchema.parse(request.params);
       const products = await services.listMerchantProducts(merchantId);
       return reply.send(successResponse({ products }));
+    });
+
+    app.get("/:merchantId/inventory.csv", async (request, reply) => {
+      const { merchantId } = MerchantIdParamsSchema.parse(request.params);
+      const exported = await services.exportMerchantInventoryCsv(merchantId);
+      return reply
+        .header("content-type", "text/csv; charset=utf-8")
+        .header(
+          "content-disposition",
+          `attachment; filename="${exported.fileName}"`,
+        )
+        .send(exported.content);
+    });
+
+    app.post("/:merchantId/catalog-imports/preview", async (request, reply) => {
+      const { merchantId } = MerchantIdParamsSchema.parse(request.params);
+      const input = PreviewCatalogImportBodySchema.parse(request.body);
+      const preview = await services.previewCatalogImport({
+        merchantId,
+        ...input,
+      });
+      return reply.send(successResponse(preview));
+    });
+
+    app.post("/:merchantId/catalog-imports", async (request, reply) => {
+      const { merchantId } = MerchantIdParamsSchema.parse(request.params);
+      const input = ExecuteCatalogImportBodySchema.parse(request.body);
+      const result = await services.executeCatalogImport({
+        merchantId,
+        ...input,
+      });
+      return reply.status(201).send(successResponse(result));
     });
 
     app.post("/:merchantId/import-profiles", async (request, reply) => {

@@ -667,22 +667,25 @@ The response must contain one valid offer: Merchant B at S$175.
 
 These endpoints belong to SANGYOON's domain. TIM does not call them during the consumer purchase flow.
 
-| Operation                    | REST endpoint                                     |
-| ---------------------------- | ------------------------------------------------- |
-| List categories              | `GET /v1/categories`                              |
-| Get category schema          | `GET /v1/categories/{categoryId}/schema`          |
-| Create merchant              | `POST /v1/merchants`                              |
-| Create product with variants | `POST /v1/merchants/{merchantId}/products`        |
-| Update product               | `PATCH /v1/products/{productId}`                  |
-| Update product variant       | `PATCH /v1/variants/{variantId}`                  |
-| Update variant inventory     | `PUT /v1/variants/{variantId}/inventory`          |
-| Read private pricing         | `GET /v1/products/{productId}/pricing-policy`     |
-| Configure pricing            | `PUT /v1/products/{productId}/pricing-policy`     |
-| List merchant products       | `GET /v1/merchants/{merchantId}/products`         |
-| Save CSV mapping profile     | `POST /v1/merchants/{merchantId}/import-profiles` |
-| List CSV mapping profiles    | `GET /v1/merchants/{merchantId}/import-profiles`  |
+| Operation                    | REST endpoint                                             |
+| ---------------------------- | --------------------------------------------------------- |
+| List categories              | `GET /v1/categories`                                      |
+| Get category schema          | `GET /v1/categories/{categoryId}/schema`                  |
+| Create merchant              | `POST /v1/merchants`                                      |
+| Create product with variants | `POST /v1/merchants/{merchantId}/products`                |
+| Update product               | `PATCH /v1/products/{productId}`                          |
+| Update product variant       | `PATCH /v1/variants/{variantId}`                          |
+| Update variant inventory     | `PUT /v1/variants/{variantId}/inventory`                  |
+| Read private pricing         | `GET /v1/products/{productId}/pricing-policy`             |
+| Configure pricing            | `PUT /v1/products/{productId}/pricing-policy`             |
+| List merchant products       | `GET /v1/merchants/{merchantId}/products`                 |
+| Export inventory CSV         | `GET /v1/merchants/{merchantId}/inventory.csv`            |
+| Preview CSV import           | `POST /v1/merchants/{merchantId}/catalog-imports/preview` |
+| Execute CSV import           | `POST /v1/merchants/{merchantId}/catalog-imports`         |
+| Save CSV mapping profile     | `POST /v1/merchants/{merchantId}/import-profiles`         |
+| List CSV mapping profiles    | `GET /v1/merchants/{merchantId}/import-profiles`          |
 
-Merchant forms are generated from the selected category schema. The Merchant workspace supports product creation, core product updates, stable-ID variant and inventory updates, private pricing controls, and reversible product pause/resume. Different CSV headers are mapped once to canonical paths and saved in a versioned merchant import profile. Raw source headers must not leak into search, offers, or MCP contracts. CSV parsing and row import execution are a later UI/import-worker phase; the taxonomy, validation, and reusable mapping boundary are implemented now.
+Merchant forms are generated from the selected category schema. The Merchant workspace supports product creation, core product updates, stable-ID variant and inventory updates, private pricing controls, reversible product pause/resume, canonical inventory export, and reviewed CSV import. Different CSV headers are mapped once to canonical paths and saved in a versioned merchant import profile. Raw source headers must not leak into search, offers, or MCP contracts. Rule-based aliases and saved mappings run first; any future AI fallback may only suggest allowed canonical targets and must never write without validation and Merchant approval.
 
 ---
 
@@ -765,3 +768,4 @@ A change marked `Backward compatible: no` must not be merged until both owners a
 - `2026-08-29` - v1.0 initial contract frozen and aligned with the TypeScript repository architecture.
 - `2026-08-30` - v1.1 replaced the rigid four-value product category with commerce domains, hierarchical category IDs, versioned category schemas, and stable variant IDs. Added the category/form and CSV mapping profile endpoints.
 - `2026-08-30` - v1.2 replaced Agent-visible mock payment tokens with user-owned saved `paymentMethodId` references, default-method checkout, payment idempotency, and terminal-failure inventory release.
+- `2026-08-30` - v1.3 added canonical inventory CSV export plus previewed, schema-validated CSV catalog import endpoints. Deterministic header rules remain the default; AI mapping is reserved as an optional reviewed fallback.

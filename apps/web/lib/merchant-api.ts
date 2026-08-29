@@ -65,6 +65,27 @@ export type ImportProfile = {
   updatedAt: string;
 };
 
+export type CatalogImportPreview = {
+  categoryId: string;
+  categoryName: string;
+  schemaVersion: string;
+  rowCount: number;
+  headers: string[];
+  columnMapping: Record<string, string>;
+  targets: Array<{ target: string; label: string; required: boolean }>;
+  unmappedHeaders: string[];
+  missingRequiredTargets: string[];
+  canImport: boolean;
+  sampleRows: Array<Record<string, string>>;
+};
+
+export type CatalogImportResult = {
+  products: MerchantProduct[];
+  importedProductCount: number;
+  importedVariantCount: number;
+  importProfile: ImportProfile;
+};
+
 export type Category = {
   categoryId: string;
   parentId: string | null;

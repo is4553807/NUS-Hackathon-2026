@@ -179,6 +179,25 @@ const payment = {
   updatedAt: timestamp,
 };
 
+const catalogImportPreview = {
+  categoryId: product.categoryId,
+  categoryName: "Shoes",
+  schemaVersion: "1.0",
+  rowCount: 1,
+  headers: ["product_name", "price", "shoe_size", "colour"],
+  columnMapping: {
+    product_name: "product.name",
+    price: "product.basePrice",
+    shoe_size: "variant.attributes.size",
+    colour: "variant.attributes.color",
+  },
+  targets: [],
+  unmappedHeaders: [],
+  missingRequiredTargets: [],
+  canImport: true,
+  sampleRows: [],
+};
+
 const services = {
   checkInventory: vi.fn(async () => ({
     available: true,
@@ -189,6 +208,29 @@ const services = {
   createMerchant: vi.fn(async () => merchant),
   createOrder: vi.fn(async () => order),
   createProduct: vi.fn(async () => product),
+  executeCatalogImport: vi.fn(async () => ({
+    products: [product],
+    importedProductCount: 1,
+    importedVariantCount: 1,
+    importProfile: {
+      importProfileId: "f6666666-6666-4666-8666-666666666666",
+      merchantId,
+      categoryId: product.categoryId,
+      name: "products · Shoes",
+      schemaVersion: "1.0",
+      sourceHeaders: catalogImportPreview.headers,
+      columnMapping: catalogImportPreview.columnMapping,
+      normalizationRules: null,
+      active: true,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    },
+  })),
+  exportMerchantInventoryCsv: vi.fn(async () => ({
+    fileName: "nus-sneaker-hub-inventory-2026-08-30.csv",
+    content:
+      '\uFEFF"product.name","variant.sku"\r\n"Nike GT Cut 3","NSH-GTC3-US9-BLK"\r\n',
+  })),
   getPublicProduct: vi.fn(async () => publicProduct),
   getCategorySchema: vi.fn(async () => ({
     categoryId: product.categoryId,
@@ -230,6 +272,7 @@ const services = {
     }
     return [product];
   }),
+  previewCatalogImport: vi.fn(async () => catalogImportPreview),
   initiatePayment: vi.fn(async () => payment),
   updateProduct: vi.fn(async () => product),
   updateProductVariant: vi.fn(async () => productVariant),
@@ -498,6 +541,58 @@ describe("Merchant REST API", () => {
     expect(services.saveImportProfile).toHaveBeenCalledWith({
       merchantId,
       ...payload,
+    });
+  });
+
+  it("downloads the merchant inventory as CSV", async () => {
+    const response = await app.inject({
+      method: "GET",
+      url: `/v1/merchants/${merchantId}/inventory.csv`,
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.headers["content-type"]).toContain("text/csv");
+    expect(response.headers["content-disposition"]).toContain(
+      "nus-sneaker-hub-inventory-2026-08-30.csv",
+    );
+    expect(response.body).toContain("variant.sku");
+  });
+
+  it("previews and executes a rule-based CSV catalog import", async () => {
+    const payload = {
+      categoryId: product.categoryId,
+      fileName: "products.csv",
+      csvText:
+        "product_name,price,shoe_size,colour\\nNike GT Cut 3,195,US 9,Black",
+    };
+    const previewResponse = await app.inject({
+      method: "POST",
+      url: `/v1/merchants/${merchantId}/catalog-imports/preview`,
+      payload,
+    });
+    const importResponse = await app.inject({
+      method: "POST",
+      url: `/v1/merchants/${merchantId}/catalog-imports`,
+      payload: {
+        ...payload,
+        columnMapping: catalogImportPreview.columnMapping,
+      },
+    });
+
+    expect(previewResponse.statusCode).toBe(200);
+    expect(previewResponse.json()).toMatchObject({
+      success: true,
+      data: { rowCount: 1, canImport: true },
+    });
+    expect(services.previewCatalogImport).toHaveBeenCalledWith({
+      merchantId,
+      ...payload,
+    });
+    expect(importResponse.statusCode).toBe(201);
+    expect(services.executeCatalogImport).toHaveBeenCalledWith({
+      merchantId,
+      ...payload,
+      columnMapping: catalogImportPreview.columnMapping,
     });
   });
 

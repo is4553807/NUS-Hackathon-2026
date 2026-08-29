@@ -208,3 +208,23 @@ export const SaveImportProfileBodySchema = z
     normalizationRules: JsonObjectSchema.nullable().optional(),
   })
   .strict();
+
+const CatalogCsvBodyFields = {
+  categoryId: CategoryIdSchema,
+  fileName: z.string().trim().min(1).max(255),
+  csvText: z.string().min(1).max(1_000_000),
+  columnMapping: z
+    .record(z.string().trim().min(1), z.string().trim().min(1))
+    .optional(),
+};
+
+export const PreviewCatalogImportBodySchema = z
+  .object(CatalogCsvBodyFields)
+  .strict();
+
+export const ExecuteCatalogImportBodySchema = z
+  .object({
+    ...CatalogCsvBodyFields,
+    columnMapping: z.record(z.string().trim().min(1), z.string().trim().min(1)),
+  })
+  .strict();
