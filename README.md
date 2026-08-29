@@ -7,21 +7,33 @@ This initial repository contains only the bootable foundation, shared transport 
 ## Architecture
 
 ```text
-Consumer Web / Telegram       Merchant Web
-            |                     |
-            v                     v
-       Agent Domain          HTTP API / MCP
-            |                     |
-            +------> MCP ---------+
-                                  |
-                                  v
-                           Commerce Domain
-                                  |
-                                  v
-                          PostgreSQL / Prisma
+Consumer Web / Telegram             Merchant Form
+            |                             |
+            v                             v
+ OpenAI Agent (TIM)                 HTTP REST API
+            |                             |
+            v                             |
+     Commerce MCP Server -----------------+
+                      |
+                      v
+               Commerce Domain
+                      |
+                      v
+              PostgreSQL / Prisma
 ```
 
 `apps/` contains executable applications and transport/UI code. `packages/` contains reusable contracts, domain boundaries, and database access.
+
+### Commerce access boundary
+
+- Merchants enter catalog, inventory, and pricing data through structured forms. The Merchant UI and REST API do not use OpenAI.
+- TIM's OpenAI-powered consumer agent never receives `DATABASE_URL` and never connects directly to PostgreSQL.
+- The consumer agent accesses commerce capabilities only through the Commerce MCP tools defined in `SHARED_API_CONTRACT.md`.
+- REST handlers and MCP tool handlers are thin adapters over the same services in `packages/commerce`; business rules must not be duplicated in transport code.
+- Only the trusted commerce/database layer can read private pricing policies or persist data. MCP responses expose only contract-approved fields.
+- Search and inventory tools are read operations. Order and payment tools must enforce explicit user confirmation, validation, and idempotency in the domain layer.
+
+The MCP server currently uses local `stdio` transport. The final integration will also expose Streamable HTTP so OpenAI's Responses API can call the remote MCP server. OpenAI documents remote MCP servers as external tool providers reached through a `server_url`, with optional authentication and per-tool approval controls. See the [official OpenAI MCP and Connectors guide](https://developers.openai.com/api/docs/guides/tools-connectors-mcp).
 
 ## Directory map
 
@@ -99,6 +111,8 @@ cp .env.example .env
 
 Fill only the values required by the application you are starting. Never commit `.env` or real secrets.
 
+`OPENAI_API_KEY` is required only by TIM's consumer Agent. Merchant forms, the REST API, the Commerce domain, the MCP server, and database scripts do not use it.
+
 ## Local development
 
 Run the main local applications:
@@ -138,8 +152,10 @@ pnpm db:seed
 pnpm db:studio
 ```
 
-`pnpm db:generate` does not require a live database. Migrations, Studio, and runtime database access require a valid `DATABASE_URL`.
+`pnpm db:generate` does not require a live database. Migrations, seed data, Studio, and runtime database access require a valid `DATABASE_URL`.
+
+`pnpm db:seed` is idempotent. It creates or updates the fixed demo merchants, products, category details, inventory variants, and pricing policies without deleting unrelated local data.
 
 ## Current implementation status
 
-The repository currently proves that the applications, packages, validation contracts, database generator, and development tooling are wired correctly. Product search, dynamic pricing, offer generation, agent behavior, order creation, and payment simulation remain deliberate TODOs for the next development phase.
+The Commerce database schema and fixed four-category taxonomy are implemented. Product search, dynamic pricing, offer generation, agent behavior, order creation, payment simulation, and remote MCP transport remain in later feature phases.

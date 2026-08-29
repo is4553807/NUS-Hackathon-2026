@@ -13,7 +13,7 @@
   },
   "scripts": {
     "build": "pnpm db:generate && tsc -p tsconfig.json",
-    "typecheck": "pnpm db:generate && tsc -p tsconfig.json --noEmit",
+    "typecheck": "pnpm db:generate && tsc -p tsconfig.json --noEmit && tsc -p prisma/tsconfig.json",
     "db:generate": "prisma generate --config prisma.config.ts",
     "db:migrate": "prisma migrate dev --config prisma.config.ts",
     "db:seed": "prisma db seed --config prisma.config.ts",
