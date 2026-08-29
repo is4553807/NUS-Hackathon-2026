@@ -1,0 +1,19 @@
+{
+  "name": "@visa-commerce/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/server.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@visa-commerce/commerce": "workspace:*",
+    "@visa-commerce/contracts": "workspace:*",
+    "@visa-commerce/db": "workspace:*",
+    "fastify": "5.12.1",
+    "zod": "4.5.2"
+  }
+}

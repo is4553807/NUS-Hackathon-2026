@@ -1,0 +1,23 @@
+{
+  "name": "@visa-commerce/agent",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@visa-commerce/contracts": "workspace:*",
+    "openai": "7.8.0",
+    "zod": "4.5.2"
+  }
+}

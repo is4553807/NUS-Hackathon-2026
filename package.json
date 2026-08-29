@@ -1,0 +1,41 @@
+{
+  "name": "visa-commerce",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.19.0",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "scripts": {
+    "dev": "concurrently -n web,api,mcp -c blue,green,magenta \"pnpm dev:web\" \"pnpm dev:api\" \"pnpm dev:mcp\"",
+    "dev:web": "pnpm --filter @visa-commerce/web dev",
+    "dev:api": "pnpm --filter @visa-commerce/api dev",
+    "dev:mcp": "pnpm --filter @visa-commerce/mcp-server dev",
+    "dev:telegram": "pnpm --filter @visa-commerce/telegram dev",
+    "build": "pnpm -r --if-present build",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "vitest run",
+    "db:generate": "pnpm --filter @visa-commerce/db db:generate",
+    "db:migrate": "pnpm --filter @visa-commerce/db db:migrate",
+    "db:seed": "pnpm --filter @visa-commerce/db db:seed",
+    "db:studio": "pnpm --filter @visa-commerce/db db:studio"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@next/eslint-plugin-next": "16.3.3",
+    "@types/node": "26.4.0",
+    "concurrently": "10.0.5",
+    "eslint": "10.9.1",
+    "eslint-config-prettier": "10.1.8",
+    "globals": "17.11.0",
+    "prettier": "3.9.6",
+    "tsx": "4.23.12",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.68.0",
+    "vitest": "4.1.11"
+  }
+}

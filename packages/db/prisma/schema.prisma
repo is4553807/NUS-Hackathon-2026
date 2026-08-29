@@ -1,0 +1,24 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// TODO: Add the MVP models in the feature implementation phase.
+//
+// TIM ownership:
+// - users
+// - user_intents
+// - agent_sessions
+//
+// SANGYOON ownership:
+// - merchants
+// - products
+// - inventory
+// - pricing_policies
+// - offers
+// - orders
+// - payments
