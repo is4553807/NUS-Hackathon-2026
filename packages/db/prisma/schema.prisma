@@ -7,18 +7,211 @@ datasource db {
   provider = "postgresql"
 }
 
-// TODO: Add the MVP models in the feature implementation phase.
-//
-// TIM ownership:
-// - users
-// - user_intents
-// - agent_sessions
-//
-// SANGYOON ownership:
-// - merchants
-// - products
-// - inventory
-// - pricing_policies
-// - offers
-// - orders
-// - payments
+enum MerchantStatus {
+  ACTIVE    @map("active")
+  INACTIVE  @map("inactive")
+  SUSPENDED @map("suspended")
+
+  @@map("merchant_status")
+}
+
+enum InventoryAvailability {
+  IN_STOCK     @map("in_stock")
+  LOW_STOCK    @map("low_stock")
+  OUT_OF_STOCK @map("out_of_stock")
+
+  @@map("inventory_availability")
+}
+
+enum OfferStatus {
+  ACTIVE    @map("active")
+  EXPIRED   @map("expired")
+  ACCEPTED  @map("accepted")
+  CANCELLED @map("cancelled")
+
+  @@map("offer_status")
+}
+
+enum OrderStatus {
+  PAYMENT_PENDING @map("payment_pending")
+  PAID            @map("paid")
+  PAYMENT_FAILED  @map("payment_failed")
+  CANCELLED       @map("cancelled")
+
+  @@map("order_status")
+}
+
+enum PaymentStatus {
+  PENDING               @map("pending")
+  REQUIRES_VERIFICATION @map("requires_verification")
+  AUTHORIZED            @map("authorized")
+  DECLINED              @map("declined")
+  FAILED                @map("failed")
+  CANCELLED             @map("cancelled")
+
+  @@map("payment_status")
+}
+
+model Merchant {
+  id           String         @id @default(uuid()) @db.Uuid
+  name         String         @db.VarChar(255)
+  category     String?        @db.VarChar(255)
+  description  String?
+  currency     String         @default("SGD") @db.Char(3)
+  contactEmail String?        @map("contact_email") @db.VarChar(255)
+  status       MerchantStatus @default(ACTIVE)
+  createdAt    DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt    DateTime       @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  products        Product[]
+  inventory       Inventory[]
+  pricingPolicies PricingPolicy[]
+  offers          Offer[]
+  orders          Order[]
+
+  @@index([category, status])
+  @@map("merchants")
+}
+
+model Product {
+  id          String   @id @default(uuid()) @db.Uuid
+  merchantId  String   @map("merchant_id") @db.Uuid
+  name        String   @db.VarChar(255)
+  description String?
+  category    String?  @db.VarChar(255)
+  brand       String?  @db.VarChar(255)
+  listedPrice Decimal  @map("listed_price") @db.Decimal(12, 2)
+  currency    String   @default("SGD") @db.Char(3)
+  attributes  Json?    @db.JsonB
+  imageUrl    String?  @map("image_url")
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  merchant      Merchant       @relation(fields: [merchantId], references: [id], onDelete: Restrict)
+  inventory     Inventory[]
+  pricingPolicy PricingPolicy?
+  offers        Offer[]
+  orders        Order[]
+
+  @@index([merchantId, active])
+  @@index([category, brand, active])
+  @@map("products")
+}
+
+model Inventory {
+  id                String                @id @default(uuid()) @db.Uuid
+  merchantId        String                @map("merchant_id") @db.Uuid
+  productId         String                @map("product_id") @db.Uuid
+  variantKey        String                @map("variant_key") @db.VarChar(255)
+  quantityAvailable Int                   @default(0) @map("quantity_available")
+  quantityReserved  Int                   @default(0) @map("quantity_reserved")
+  availability      InventoryAvailability @default(IN_STOCK)
+  updatedAt         DateTime              @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  merchant Merchant @relation(fields: [merchantId], references: [id], onDelete: Restrict)
+  product  Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, variantKey])
+  @@index([merchantId, availability])
+  @@map("inventory")
+}
+
+model PricingPolicy {
+  id                       String   @id @default(uuid()) @db.Uuid
+  merchantId               String   @map("merchant_id") @db.Uuid
+  productId                String   @unique @map("product_id") @db.Uuid
+  negotiationEnabled       Boolean  @default(false) @map("negotiation_enabled")
+  minimumPrice             Decimal? @map("minimum_price") @db.Decimal(12, 2)
+  maxDiscountPercent       Decimal? @map("max_discount_percent") @db.Decimal(5, 2)
+  inventoryDiscountEnabled Boolean  @default(false) @map("inventory_discount_enabled")
+  rules                    Json?    @db.JsonB
+  createdAt                DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt                DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  merchant Merchant @relation(fields: [merchantId], references: [id], onDelete: Restrict)
+  product  Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([merchantId])
+  @@map("pricing_policies")
+}
+
+model Offer {
+  id                String      @id @default(uuid()) @db.Uuid
+  intentId          String      @map("intent_id") @db.Uuid
+  merchantId        String      @map("merchant_id") @db.Uuid
+  productId         String      @map("product_id") @db.Uuid
+  variantKey        String      @map("variant_key") @db.VarChar(255)
+  attributes        Json        @db.JsonB
+  listedPrice       Decimal     @map("listed_price") @db.Decimal(12, 2)
+  offeredPrice      Decimal     @map("offered_price") @db.Decimal(12, 2)
+  currency          String      @default("SGD") @db.Char(3)
+  quantity          Int         @default(1)
+  deliveryAvailable Boolean     @default(true) @map("delivery_available")
+  deliveryEstimate  DateTime?   @map("delivery_estimate") @db.Timestamptz(3)
+  priceExplanation  String      @map("price_explanation")
+  status            OfferStatus @default(ACTIVE)
+  expiresAt         DateTime    @map("expires_at") @db.Timestamptz(3)
+  createdAt         DateTime    @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  merchant Merchant @relation(fields: [merchantId], references: [id], onDelete: Restrict)
+  product  Product  @relation(fields: [productId], references: [id], onDelete: Restrict)
+  order    Order?
+
+  // TODO(TIM integration): add the UserIntent relation after TIM's model lands.
+  @@index([intentId, status, expiresAt])
+  @@index([merchantId, status])
+  @@index([productId, status])
+  @@map("offers")
+}
+
+model Order {
+  id                  String      @id @default(uuid()) @db.Uuid
+  requestId           String      @unique @map("request_id") @db.Uuid
+  userId              String      @map("user_id") @db.Uuid
+  merchantId          String      @map("merchant_id") @db.Uuid
+  offerId             String      @unique @map("offer_id") @db.Uuid
+  productId           String      @map("product_id") @db.Uuid
+  quantity            Int         @default(1)
+  unitPrice           Decimal     @map("unit_price") @db.Decimal(12, 2)
+  totalAmount         Decimal     @map("total_amount") @db.Decimal(12, 2)
+  currency            String      @default("SGD") @db.Char(3)
+  userConfirmed       Boolean     @map("user_confirmed")
+  confirmedAt         DateTime    @map("confirmed_at") @db.Timestamptz(3)
+  confirmationChannel String      @map("confirmation_channel") @db.VarChar(50)
+  status              OrderStatus @default(PAYMENT_PENDING)
+  createdAt           DateTime    @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt           DateTime    @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  merchant Merchant  @relation(fields: [merchantId], references: [id], onDelete: Restrict)
+  offer    Offer     @relation(fields: [offerId], references: [id], onDelete: Restrict)
+  product  Product   @relation(fields: [productId], references: [id], onDelete: Restrict)
+  payments Payment[]
+
+  // TODO(TIM integration): add the User relation after TIM's model lands.
+  @@index([userId, status, createdAt])
+  @@index([merchantId, status, createdAt])
+  @@map("orders")
+}
+
+model Payment {
+  id                     String        @id @default(uuid()) @db.Uuid
+  requestId              String        @unique @map("request_id") @db.Uuid
+  orderId                String        @map("order_id") @db.Uuid
+  provider               String        @default("Visa") @db.VarChar(100)
+  amount                 Decimal       @db.Decimal(12, 2)
+  currency               String        @default("SGD") @db.Char(3)
+  paymentToken           String?       @map("payment_token")
+  cardholderVerified     Boolean       @default(false) @map("cardholder_verified")
+  status                 PaymentStatus @default(PENDING)
+  authorizationReference String?       @map("authorization_reference") @db.VarChar(255)
+  failureCode            String?       @map("failure_code") @db.VarChar(100)
+  failureMessage         String?       @map("failure_message")
+  createdAt              DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt              DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Restrict)
+
+  @@index([orderId, status, createdAt])
+  @@map("payments")
+}
