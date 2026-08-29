@@ -65,6 +65,47 @@ export type ImportProfile = {
   updatedAt: string;
 };
 
+export type Category = {
+  categoryId: string;
+  parentId: string | null;
+  commerceDomain: MerchantProduct["commerceDomain"];
+  productKind: MerchantProduct["productKind"];
+  slug: string;
+  name: string;
+  level: number;
+  aliases: string[];
+  active: boolean;
+};
+
+export type CategoryAttributeDefinition = {
+  type: "string" | "number" | "boolean";
+  scope: "product" | "variant";
+  required?: boolean;
+  comparable?: boolean;
+  filterable?: boolean;
+  aliases?: string[];
+};
+
+export type CategorySchema = Category & {
+  schemaVersion: string;
+  attributeSchema: {
+    attributes: Record<string, CategoryAttributeDefinition>;
+  };
+};
+
+export type PricingPolicy = {
+  pricingPolicyId: string;
+  merchantId: string;
+  productId: string;
+  negotiationEnabled: boolean;
+  minimumPrice: number | null;
+  maxDiscountPercent: number | null;
+  inventoryDiscountEnabled: boolean;
+  rules: Record<string, unknown> | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
 type ApiEnvelope<T> = {
   success: true;
   data: T;
@@ -86,6 +127,32 @@ async function getApiData<T>(path: string): Promise<T> {
   }
 
   return envelope.data;
+}
+
+export async function loadCategorySchemas(): Promise<CategorySchema[]> {
+  const { categories } = await getApiData<{ categories: Category[] }>(
+    "/v1/categories",
+  );
+  const parentIds = new Set(
+    categories
+      .map((category) => category.parentId)
+      .filter((parentId): parentId is string => parentId !== null),
+  );
+  const leafCategories = categories.filter(
+    (category) => !parentIds.has(category.categoryId),
+  );
+  const schemas = await Promise.all(
+    leafCategories.map(async (category) => {
+      try {
+        return await getApiData<CategorySchema>(
+          `/v1/categories/${encodeURIComponent(category.categoryId)}/schema`,
+        );
+      } catch {
+        return null;
+      }
+    }),
+  );
+  return schemas.filter((schema): schema is CategorySchema => schema !== null);
 }
 
 export async function loadMerchantDashboard(requestedMerchantId?: string) {

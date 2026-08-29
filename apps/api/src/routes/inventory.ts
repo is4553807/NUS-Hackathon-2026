@@ -4,6 +4,7 @@ import type { FastifyPluginAsync } from "fastify";
 import { successResponse } from "../http/responses.js";
 import {
   UpsertInventoryBodySchema,
+  UpdateProductVariantBodySchema,
   VariantIdParamsSchema,
 } from "../schemas/merchant-commerce.js";
 import {
@@ -15,6 +16,13 @@ export function createInventoryRoutes(
   services: CommerceApiServices,
 ): FastifyPluginAsync {
   return async (app) => {
+    app.patch("/:variantId", async (request, reply) => {
+      const { variantId } = VariantIdParamsSchema.parse(request.params);
+      const input = UpdateProductVariantBodySchema.parse(request.body);
+      const variant = await services.updateProductVariant(variantId, input);
+      return reply.send(successResponse(variant));
+    });
+
     app.put("/:variantId/inventory", async (request, reply) => {
       const { variantId } = VariantIdParamsSchema.parse(request.params);
       const input = UpsertInventoryBodySchema.parse(request.body);

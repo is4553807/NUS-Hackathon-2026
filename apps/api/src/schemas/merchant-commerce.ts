@@ -170,6 +170,18 @@ export const UpsertInventoryBodySchema = z
   })
   .strict();
 
+export const UpdateProductVariantBodySchema = z
+  .object({
+    externalId: NullableTextSchema,
+    sku: NullableTextSchema,
+    name: NullableTextSchema,
+    attributes: ProductAttributesSchema.optional(),
+    listedPrice: z.number().finite().nonnegative().optional(),
+    imageUrl: NullableUrlSchema,
+    active: z.boolean().optional(),
+  })
+  .strict();
+
 export const ConfigurePricingPolicyBodySchema = z
   .object({
     negotiationEnabled: z.boolean(),

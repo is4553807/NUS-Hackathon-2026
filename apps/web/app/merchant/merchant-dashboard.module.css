@@ -556,7 +556,7 @@
 
 .productTable {
   width: 100%;
-  min-width: 970px;
+  min-width: 1120px;
   border-collapse: collapse;
   text-align: left;
 }
@@ -771,7 +771,9 @@
 
 .inventoryRow {
   display: grid;
-  grid-template-columns: minmax(180px, 1.4fr) 95px 64px 64px minmax(140px, 1fr);
+  grid-template-columns:
+    minmax(180px, 1.4fr) 95px 64px 64px minmax(140px, 1fr)
+    auto;
   align-items: center;
   gap: 14px;
   padding: 14px 22px;
@@ -1011,6 +1013,527 @@
   line-height: 1.65;
 }
 
+.headingActions {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.primaryButton,
+.secondaryButton,
+.dangerButton,
+.inventoryManageButton,
+.rowActions button,
+.removeVariantButton {
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 13px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 750;
+  transition:
+    transform 150ms ease,
+    border-color 150ms ease,
+    background 150ms ease,
+    box-shadow 150ms ease;
+}
+
+.primaryButton {
+  color: #fff;
+  background: var(--blue);
+  box-shadow: 0 7px 18px rgba(49, 87, 232, 0.2);
+}
+
+.primaryButton > span {
+  font-size: 15px;
+  font-weight: 450;
+}
+
+.primaryButton:hover:not(:disabled) {
+  background: var(--blue-dark);
+  transform: translateY(-1px);
+}
+
+.secondaryButton {
+  border-color: var(--line);
+  color: #526078;
+  background: #fff;
+}
+
+.secondaryButton:hover:not(:disabled) {
+  border-color: #b7c2e7;
+  color: var(--blue);
+  background: #fafbff;
+}
+
+.dangerButton {
+  color: #fff;
+  background: var(--danger);
+}
+
+.primaryButton:disabled,
+.secondaryButton:disabled,
+.dangerButton:disabled {
+  cursor: wait;
+  opacity: 0.58;
+}
+
+.rowActions {
+  display: flex;
+  min-width: 164px;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.rowActions button {
+  min-height: 28px;
+  padding: 0 9px;
+  border-color: #dde3ef;
+  color: #58657c;
+  background: #fff;
+  font-size: 8px;
+}
+
+.rowActions button:hover {
+  border-color: #aebce9;
+  color: var(--blue);
+  background: var(--blue-pale);
+}
+
+.rowActions .pauseAction:hover {
+  border-color: #efc9ce;
+  color: var(--danger);
+  background: #fff5f6;
+}
+
+.rowActions .resumeAction {
+  border-color: #cbe8dd;
+  color: var(--success);
+  background: var(--success-pale);
+}
+
+.inventoryManageButton {
+  min-height: 29px;
+  padding: 0 10px;
+  border-color: #d7deee;
+  color: var(--blue);
+  background: #fff;
+  font-size: 8px;
+}
+
+.inventoryManageButton:hover {
+  border-color: #9faee3;
+  background: var(--blue-pale);
+}
+
+.modalBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(11, 20, 42, 0.62);
+  backdrop-filter: blur(7px);
+}
+
+.modal {
+  width: min(620px, 100%);
+  max-height: calc(100vh - 48px);
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  border-radius: 19px;
+  background: #fff;
+  box-shadow: 0 34px 90px rgba(5, 14, 34, 0.3);
+}
+
+.modalWide {
+  width: min(900px, 100%);
+}
+
+.modalHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 24px 26px 20px;
+  border-bottom: 1px solid var(--line);
+  background:
+    radial-gradient(circle at 90% 0%, rgba(49, 87, 232, 0.12), transparent 35%),
+    #fff;
+}
+
+.modalHeader > div {
+  min-width: 0;
+}
+
+.modalHeader p {
+  margin: 0 0 7px;
+  color: var(--blue);
+  font-size: 8px;
+  font-weight: 850;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+.modalHeader h2 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 20px;
+  letter-spacing: -0.03em;
+}
+
+.modalHeader div > span {
+  display: block;
+  margin-top: 7px;
+  color: #7d899d;
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.closeButton {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  color: #748096;
+  background: #fff;
+  cursor: pointer;
+  font-size: 20px;
+  line-height: 1;
+}
+
+.closeButton:hover {
+  color: var(--ink);
+  background: var(--surface-muted);
+}
+
+.modalBody {
+  max-height: calc(100vh - 158px);
+  overflow-y: auto;
+  padding: 24px 26px 26px;
+}
+
+.managementForm {
+  display: grid;
+  gap: 22px;
+}
+
+.formSection {
+  display: grid;
+  gap: 17px;
+  padding-bottom: 22px;
+  border-bottom: 1px solid #edf0f5;
+}
+
+.formSection:last-of-type {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.formSectionHeading {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+}
+
+.formSectionHeading > span {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 8px;
+  color: var(--blue);
+  background: var(--blue-pale);
+  font-size: 8px;
+  font-weight: 850;
+}
+
+.formSectionHeading h3 {
+  margin: 1px 0 0;
+  color: var(--ink);
+  font-size: 12px;
+}
+
+.formSectionHeading p {
+  margin: 4px 0 0;
+  color: #8a95a7;
+  font-size: 9px;
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 13px;
+}
+
+.field,
+.fieldWide {
+  display: grid;
+  align-content: start;
+  gap: 7px;
+  min-width: 0;
+}
+
+.fieldWide,
+.checkFieldWide {
+  grid-column: 1 / -1;
+}
+
+.field > span,
+.fieldWide > span {
+  display: flex;
+  min-height: 15px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: #536078;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.field em,
+.fieldWide em {
+  color: #8b95a8;
+  font-size: 7px;
+  font-style: normal;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.field input,
+.field select,
+.field textarea,
+.fieldWide input,
+.fieldWide select,
+.fieldWide textarea {
+  width: 100%;
+  min-height: 41px;
+  padding: 10px 11px;
+  outline: none;
+  border: 1px solid #dce2ec;
+  border-radius: 9px;
+  color: var(--ink);
+  background: #fff;
+  font-size: 10px;
+  transition:
+    border-color 150ms ease,
+    box-shadow 150ms ease;
+}
+
+.field textarea,
+.fieldWide textarea {
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.field input:focus,
+.field select:focus,
+.field textarea:focus,
+.fieldWide input:focus,
+.fieldWide select:focus,
+.fieldWide textarea:focus {
+  border-color: #7e95ec;
+  box-shadow: 0 0 0 3px rgba(49, 87, 232, 0.1);
+}
+
+.field input:disabled,
+.field select:disabled {
+  color: #9aa3b2;
+  background: #f2f4f7;
+}
+
+.field > small {
+  color: #8b95a8;
+  font-size: 8px;
+}
+
+.checkField,
+.checkFieldWide,
+.switchField {
+  display: flex;
+  min-height: 55px;
+  align-items: center;
+  gap: 11px;
+  padding: 11px 13px;
+  border: 1px solid #e0e5ee;
+  border-radius: 10px;
+  background: #fafbfc;
+}
+
+.checkField input,
+.checkFieldWide input {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--blue);
+}
+
+.checkField > span,
+.checkFieldWide > span,
+.switchField > span {
+  display: grid;
+  flex: 1;
+  gap: 3px;
+}
+
+.checkField strong,
+.checkFieldWide strong,
+.switchField strong {
+  color: #3c4962;
+  font-size: 9px;
+}
+
+.checkField small,
+.checkFieldWide small,
+.switchField small {
+  color: #8a95a7;
+  font-size: 8px;
+  line-height: 1.4;
+}
+
+.switchField {
+  justify-content: space-between;
+  border-color: #dbe2f4;
+  background: #f7f9ff;
+}
+
+.switchField > input {
+  width: 36px;
+  height: 19px;
+  accent-color: var(--blue);
+}
+
+.schemaCallout {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 11px 13px;
+  border: 1px solid #d8e2ff;
+  border-radius: 9px;
+  color: #49618f;
+  background: #f4f7ff;
+  font-size: 9px;
+}
+
+.schemaCallout span {
+  padding: 5px 8px;
+  border-radius: 999px;
+  color: var(--blue);
+  background: #fff;
+  font-size: 8px;
+  font-weight: 750;
+}
+
+.variantDraftList {
+  display: grid;
+  gap: 12px;
+}
+
+.variantDraft {
+  min-width: 0;
+  margin: 0;
+  padding: 15px;
+  border: 1px solid #dfe5ef;
+  border-radius: 12px;
+  background: #fbfcfe;
+}
+
+.variantDraft legend {
+  padding: 0 6px;
+  color: #536078;
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.removeVariantButton {
+  min-height: 27px;
+  margin-top: 12px;
+  padding: 0 9px;
+  border-color: #efcdd1;
+  color: var(--danger);
+  background: #fff;
+  font-size: 8px;
+}
+
+.formFooter {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 9px;
+  padding-top: 2px;
+}
+
+.formSuccess,
+.formError {
+  margin: 0;
+  padding: 11px 13px;
+  border: 1px solid;
+  border-radius: 9px;
+  font-size: 9px;
+  line-height: 1.45;
+}
+
+.formSuccess {
+  border-color: #cce9de;
+  color: #17634f;
+  background: var(--success-pale);
+}
+
+.formError {
+  border-color: #f1ccd1;
+  color: #9e3440;
+  background: #fff5f6;
+}
+
+.confirmPanel {
+  display: flex;
+  align-items: flex-start;
+  gap: 13px;
+  padding: 15px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: #fafbfc;
+}
+
+.confirmPanel > span {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 50%;
+  font-size: 11px;
+  font-weight: 850;
+}
+
+.warningMark {
+  color: var(--danger);
+  background: #ffe9ec;
+}
+
+.successMark {
+  color: var(--success);
+  background: var(--success-pale);
+}
+
+.confirmPanel p {
+  margin: 1px 0 0;
+  color: #647087;
+  font-size: 10px;
+  line-height: 1.55;
+}
+
 @media (max-width: 1120px) {
   .stats {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1088,6 +1611,22 @@
     align-items: flex-start;
     flex-direction: column;
   }
+
+  .modalBackdrop {
+    align-items: end;
+    padding: 12px;
+  }
+
+  .modal,
+  .modalWide {
+    width: 100%;
+    max-height: calc(100vh - 24px);
+    border-radius: 17px;
+  }
+
+  .modalBody {
+    max-height: calc(100vh - 140px);
+  }
 }
 
 @media (max-width: 560px) {
@@ -1100,7 +1639,13 @@
   }
 
   .panelHeading {
+    align-items: stretch;
+    flex-direction: column;
     padding: 20px 18px 15px;
+  }
+
+  .headingActions {
+    justify-content: space-between;
   }
 
   .filterRow {
@@ -1109,13 +1654,38 @@
   }
 
   .inventoryRow {
-    grid-template-columns: minmax(160px, 1fr) 85px 55px;
+    grid-template-columns: minmax(155px, 1fr) 78px auto;
     padding: 14px 18px;
   }
 
+  .inventoryRow > div:nth-child(3),
   .inventoryRow > div:nth-child(4),
   .variantAttributes {
     display: none;
+  }
+
+  .modalHeader,
+  .modalBody {
+    padding-right: 18px;
+    padding-left: 18px;
+  }
+
+  .formGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .fieldWide,
+  .checkFieldWide {
+    grid-column: auto;
+  }
+
+  .formFooter {
+    align-items: stretch;
+    flex-direction: column-reverse;
+  }
+
+  .formFooter button {
+    width: 100%;
   }
 
   .footer {

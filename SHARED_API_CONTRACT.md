@@ -674,13 +674,15 @@ These endpoints belong to SANGYOON's domain. TIM does not call them during the c
 | Create merchant              | `POST /v1/merchants`                              |
 | Create product with variants | `POST /v1/merchants/{merchantId}/products`        |
 | Update product               | `PATCH /v1/products/{productId}`                  |
+| Update product variant       | `PATCH /v1/variants/{variantId}`                  |
 | Update variant inventory     | `PUT /v1/variants/{variantId}/inventory`          |
+| Read private pricing         | `GET /v1/products/{productId}/pricing-policy`     |
 | Configure pricing            | `PUT /v1/products/{productId}/pricing-policy`     |
 | List merchant products       | `GET /v1/merchants/{merchantId}/products`         |
 | Save CSV mapping profile     | `POST /v1/merchants/{merchantId}/import-profiles` |
 | List CSV mapping profiles    | `GET /v1/merchants/{merchantId}/import-profiles`  |
 
-Merchant forms are generated from the selected category schema. Different CSV headers are mapped once to canonical paths and saved in a versioned merchant import profile. Raw source headers must not leak into search, offers, or MCP contracts. CSV parsing and row import execution are a later UI/import-worker phase; the taxonomy, validation, and reusable mapping boundary are implemented now.
+Merchant forms are generated from the selected category schema. The Merchant workspace supports product creation, core product updates, stable-ID variant and inventory updates, private pricing controls, and reversible product pause/resume. Different CSV headers are mapped once to canonical paths and saved in a versioned merchant import profile. Raw source headers must not leak into search, offers, or MCP contracts. CSV parsing and row import execution are a later UI/import-worker phase; the taxonomy, validation, and reusable mapping boundary are implemented now.
 
 ---
 

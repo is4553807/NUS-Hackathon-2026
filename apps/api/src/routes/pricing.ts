@@ -14,6 +14,12 @@ export function createPricingRoutes(
   services: CommerceApiServices,
 ): FastifyPluginAsync {
   return async (app) => {
+    app.get("/:productId/pricing-policy", async (request, reply) => {
+      const { productId } = ProductIdParamsSchema.parse(request.params);
+      const policy = await services.getPricingPolicy(productId);
+      return reply.send(successResponse(policy));
+    });
+
     app.put("/:productId/pricing-policy", async (request, reply) => {
       const { productId } = ProductIdParamsSchema.parse(request.params);
       const input = ConfigurePricingPolicyBodySchema.parse(request.body);

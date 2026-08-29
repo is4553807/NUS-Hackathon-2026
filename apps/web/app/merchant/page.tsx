@@ -1,11 +1,19 @@
 import Link from "next/link";
 
 import {
+  loadCategorySchemas,
   loadMerchantDashboard,
+  type CategorySchema,
   type Merchant,
   type MerchantProduct,
   type ProductVariant,
 } from "@/lib/merchant-api";
+
+import {
+  AddProductButton,
+  ProductManagementActions,
+  VariantManagementButton,
+} from "./merchant-management";
 
 import styles from "./merchant-dashboard.module.css";
 
@@ -147,7 +155,13 @@ function StatCard({
   );
 }
 
-function ProductRow({ product }: { product: MerchantProduct }) {
+function ProductRow({
+  product,
+  schema,
+}: {
+  product: MerchantProduct;
+  schema: CategorySchema | undefined;
+}) {
   const stock = stockForProduct(product);
   const attributePreview = Object.entries(product.attributes).slice(0, 2);
 
@@ -206,6 +220,9 @@ function ProductRow({ product }: { product: MerchantProduct }) {
           )}
         </div>
       </td>
+      <td>
+        <ProductManagementActions product={product} schema={schema} />
+      </td>
     </tr>
   );
 }
@@ -213,9 +230,11 @@ function ProductRow({ product }: { product: MerchantProduct }) {
 function InventoryRow({
   product,
   variant,
+  schema,
 }: {
   product: MerchantProduct;
   variant: ProductVariant;
+  schema: CategorySchema | undefined;
 }) {
   const remaining = variant.quantityRemaining;
   const stockClass =
@@ -261,6 +280,11 @@ function InventoryRow({
             <span key={key}>{`${key}: ${String(value)}`}</span>
           ))}
       </div>
+      <VariantManagementButton
+        product={product}
+        schema={schema}
+        variant={variant}
+      />
     </div>
   );
 }
@@ -294,8 +318,12 @@ export default async function MerchantHomePage({
     : "all";
 
   let dashboard: Awaited<ReturnType<typeof loadMerchantDashboard>>;
+  let categorySchemas: CategorySchema[];
   try {
-    dashboard = await loadMerchantDashboard(requestedMerchantId);
+    [dashboard, categorySchemas] = await Promise.all([
+      loadMerchantDashboard(requestedMerchantId),
+      loadCategorySchemas(),
+    ]);
   } catch {
     return <ApiUnavailable />;
   }
@@ -438,9 +466,15 @@ export default async function MerchantHomePage({
                   Every merchant format is normalized before the agent sees it.
                 </p>
               </div>
-              <span className={styles.countBadge}>
-                {filteredProducts.length} shown
-              </span>
+              <div className={styles.headingActions}>
+                <span className={styles.countBadge}>
+                  {filteredProducts.length} shown
+                </span>
+                <AddProductButton
+                  merchantId={selectedMerchant.merchantId}
+                  schemas={categorySchemas}
+                />
+              </div>
             </div>
 
             <div className={styles.filterRow} aria-label="Filter products">
@@ -470,11 +504,18 @@ export default async function MerchantHomePage({
                       <th>Availability</th>
                       <th>Status</th>
                       <th>Canonical attributes</th>
+                      <th>Manage</th>
                     </tr>
                   </thead>
                   <tbody>
                     {filteredProducts.map((product) => (
-                      <ProductRow key={product.productId} product={product} />
+                      <ProductRow
+                        key={product.productId}
+                        product={product}
+                        schema={categorySchemas.find(
+                          (schema) => schema.categoryId === product.categoryId,
+                        )}
+                      />
                     ))}
                   </tbody>
                 </table>
@@ -505,6 +546,9 @@ export default async function MerchantHomePage({
                     <InventoryRow
                       key={variant.variantId}
                       product={product}
+                      schema={categorySchemas.find(
+                        (schema) => schema.categoryId === product.categoryId,
+                      )}
                       variant={variant}
                     />
                   ))

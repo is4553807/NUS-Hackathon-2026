@@ -83,6 +83,9 @@ A `ProductVariant` represents the exact thing that can be bought: a shoe size an
 3. Generate product and variant fields from the schema.
 4. Submit canonical data to `POST /v1/merchants/{merchantId}/products`.
 5. Update stock through `PUT /v1/variants/{variantId}/inventory`.
+6. Update SKU, price, status, or variant attributes through `PATCH /v1/variants/{variantId}` without replacing its stable ID.
+
+The Merchant workspace implements this flow. Removing a product from discovery uses the reversible `active: false` state rather than a physical delete, preserving order, payment, and audit relationships.
 
 ### CSV onboarding
 

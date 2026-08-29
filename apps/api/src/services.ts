@@ -6,6 +6,7 @@ import {
   createProduct,
   getCategorySchema,
   getPaymentStatus,
+  getPricingPolicy,
   getPublicProduct,
   initiatePayment,
   listMerchants,
@@ -16,6 +17,7 @@ import {
   saveImportProfile,
   searchProducts,
   updateProduct,
+  updateProductVariant,
   upsertInventory,
 } from "@visa-commerce/commerce";
 
@@ -27,6 +29,7 @@ export const defaultCommerceApiServices = {
   createProduct,
   getCategorySchema,
   getPaymentStatus,
+  getPricingPolicy,
   getPublicProduct,
   initiatePayment,
   listMerchants,
@@ -37,6 +40,7 @@ export const defaultCommerceApiServices = {
   saveImportProfile,
   searchProducts,
   updateProduct,
+  updateProductVariant,
   upsertInventory,
 };
 

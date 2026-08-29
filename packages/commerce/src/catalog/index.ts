@@ -124,6 +124,16 @@ export type UpdateProductInput = {
   active?: boolean;
 };
 
+export type UpdateProductVariantInput = {
+  externalId?: string | null;
+  sku?: string | null;
+  name?: string | null;
+  attributes?: ProductAttributes;
+  listedPrice?: number;
+  imageUrl?: string | null;
+  active?: boolean;
+};
+
 export type ProductVariantRecord = {
   variantId: string;
   externalId: string | null;
@@ -346,6 +356,30 @@ function mapDetails(product: ProductWithDetails): JsonObject | null {
   };
 }
 
+function toProductVariantRecord(
+  variant: ProductWithDetails["variants"][number],
+): ProductVariantRecord {
+  return {
+    variantId: variant.id,
+    externalId: variant.externalId,
+    sku: variant.sku,
+    name: variant.name,
+    attributes: scalarAttributes(variant.attributes),
+    listedPrice: variant.listedPrice.toNumber(),
+    imageUrl: variant.imageUrl,
+    active: variant.active,
+    quantityAvailable: variant.inventory?.quantityAvailable ?? null,
+    quantityReserved: variant.inventory?.quantityReserved ?? null,
+    quantityRemaining:
+      variant.inventory === null
+        ? null
+        : calculateAvailableQuantity(
+            variant.inventory.quantityAvailable,
+            variant.inventory.quantityReserved,
+          ),
+  };
+}
+
 function toProductRecord(product: ProductWithDetails): ProductRecord {
   return {
     productId: product.id,
@@ -367,25 +401,7 @@ function toProductRecord(product: ProductWithDetails): ProductRecord {
     attributes: scalarAttributes(product.attributes),
     active: product.active,
     details: mapDetails(product),
-    variants: product.variants.map((variant) => ({
-      variantId: variant.id,
-      externalId: variant.externalId,
-      sku: variant.sku,
-      name: variant.name,
-      attributes: scalarAttributes(variant.attributes),
-      listedPrice: variant.listedPrice.toNumber(),
-      imageUrl: variant.imageUrl,
-      active: variant.active,
-      quantityAvailable: variant.inventory?.quantityAvailable ?? null,
-      quantityReserved: variant.inventory?.quantityReserved ?? null,
-      quantityRemaining:
-        variant.inventory === null
-          ? null
-          : calculateAvailableQuantity(
-              variant.inventory.quantityAvailable,
-              variant.inventory.quantityReserved,
-            ),
-    })),
+    variants: product.variants.map(toProductVariantRecord),
     createdAt: product.createdAt.toISOString(),
     updatedAt: product.updatedAt.toISOString(),
   };
@@ -828,4 +844,114 @@ export async function updateProduct(
 
   if (product === null) throwNotFound("Product", productId);
   return toProductRecord(product);
+}
+
+export async function updateProductVariant(
+  variantId: string,
+  input: UpdateProductVariantInput,
+  dependencies: CommerceDependencies = {},
+): Promise<ProductVariantRecord> {
+  const database = getCommerceDatabase(dependencies);
+  const existing = await database.productVariant.findUnique({
+    where: { id: variantId },
+    include: {
+      inventory: true,
+      product: {
+        select: {
+          attributes: true,
+          category: {
+            select: {
+              schemas: {
+                where: { active: true },
+                orderBy: { createdAt: "desc" },
+                take: 1,
+                select: { attributeSchema: true },
+              },
+            },
+          },
+          variants: {
+            orderBy: { createdAt: "asc" },
+            select: {
+              id: true,
+              externalId: true,
+              sku: true,
+              name: true,
+              attributes: true,
+              listedPrice: true,
+              imageUrl: true,
+              active: true,
+            },
+          },
+        },
+      },
+    },
+  });
+  if (existing === null) throwNotFound("ProductVariant", variantId);
+
+  const listedPrice =
+    input.listedPrice === undefined
+      ? undefined
+      : roundMoney(requireNonNegative(input.listedPrice, "listedPrice"));
+  const candidateVariants: ProductVariantInput[] =
+    existing.product.variants.map((variant) =>
+      variant.id === variantId
+        ? {
+            externalId:
+              input.externalId === undefined
+                ? variant.externalId
+                : optionalText(input.externalId),
+            sku:
+              input.sku === undefined ? variant.sku : optionalText(input.sku),
+            name:
+              input.name === undefined
+                ? variant.name
+                : optionalText(input.name),
+            attributes:
+              input.attributes ?? scalarAttributes(variant.attributes),
+            listedPrice: listedPrice ?? variant.listedPrice.toNumber(),
+            imageUrl:
+              input.imageUrl === undefined
+                ? variant.imageUrl
+                : optionalText(input.imageUrl),
+            active: input.active ?? variant.active,
+          }
+        : {
+            externalId: variant.externalId,
+            sku: variant.sku,
+            name: variant.name,
+            attributes: scalarAttributes(variant.attributes),
+            listedPrice: variant.listedPrice.toNumber(),
+            imageUrl: variant.imageUrl,
+            active: variant.active,
+          },
+    );
+
+  validateVariants(candidateVariants);
+  validateCategoryAttributes({
+    schema: existing.product.category.schemas[0]?.attributeSchema ?? null,
+    productAttributes: scalarAttributes(existing.product.attributes),
+    variants: candidateVariants,
+  });
+
+  const updated = await database.productVariant.update({
+    where: { id: variantId },
+    data: {
+      ...(input.externalId === undefined
+        ? {}
+        : { externalId: optionalText(input.externalId) }),
+      ...(input.sku === undefined ? {} : { sku: optionalText(input.sku) }),
+      ...(input.name === undefined ? {} : { name: optionalText(input.name) }),
+      ...(input.attributes === undefined
+        ? {}
+        : { attributes: input.attributes as Prisma.InputJsonObject }),
+      ...(listedPrice === undefined ? {} : { listedPrice }),
+      ...(input.imageUrl === undefined
+        ? {}
+        : { imageUrl: optionalText(input.imageUrl) }),
+      ...(input.active === undefined ? {} : { active: input.active }),
+    },
+    include: { inventory: true },
+  });
+
+  return toProductVariantRecord(updated);
 }

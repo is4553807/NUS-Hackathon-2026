@@ -60,6 +60,20 @@ const inventory = {
   updatedAt: timestamp,
 };
 
+const productVariant = {
+  variantId: inventory.variantId,
+  externalId: "NSH-GTC3-US9-BLK",
+  sku: inventory.sku,
+  name: "US 9 / Black",
+  attributes: inventory.attributes,
+  listedPrice: 195,
+  imageUrl: null,
+  active: true,
+  quantityAvailable: inventory.quantityAvailable,
+  quantityReserved: inventory.quantityReserved,
+  quantityRemaining: inventory.quantityRemaining,
+};
+
 const pricingPolicy = {
   pricingPolicyId: "c1111111-1111-4111-8111-111111111111",
   merchantId,
@@ -190,6 +204,7 @@ const services = {
     attributeSchema: { attributes: { size: { type: "string" } } },
   })),
   getPaymentStatus: vi.fn(async () => payment),
+  getPricingPolicy: vi.fn(async () => pricingPolicy),
   listCategories: vi.fn(async () => [
     {
       categoryId: product.categoryId,
@@ -217,6 +232,7 @@ const services = {
   }),
   initiatePayment: vi.fn(async () => payment),
   updateProduct: vi.fn(async () => product),
+  updateProductVariant: vi.fn(async () => productVariant),
   upsertInventory: vi.fn(async () => inventory),
   configurePricingPolicy: vi.fn(async () => pricingPolicy),
   requestOffers: vi.fn(async () => ({ offers: [offer] })),
@@ -418,6 +434,32 @@ describe("Merchant REST API", () => {
     });
   });
 
+  it("updates a product variant without changing its stable ID", async () => {
+    const response = await app.inject({
+      method: "PATCH",
+      url: `/v1/variants/${inventory.variantId}`,
+      payload: {
+        sku: "NSH-GTC3-US9-BLACK",
+        listedPrice: 189,
+        attributes: { size: "US 9", color: "Black" },
+      },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(services.updateProductVariant).toHaveBeenCalledWith(
+      inventory.variantId,
+      {
+        sku: "NSH-GTC3-US9-BLACK",
+        listedPrice: 189,
+        attributes: { size: "US 9", color: "Black" },
+      },
+    );
+    expect(response.json()).toMatchObject({
+      success: true,
+      data: { variantId: inventory.variantId },
+    });
+  });
+
   it("returns category schemas for merchant form generation", async () => {
     const response = await app.inject({
       method: "GET",
@@ -478,6 +520,20 @@ describe("Merchant REST API", () => {
       minimumPrice: 165,
       maxDiscountPercent: 15,
       inventoryDiscountEnabled: true,
+    });
+  });
+
+  it("reads a private pricing policy for the Merchant workspace", async () => {
+    const response = await app.inject({
+      method: "GET",
+      url: `/v1/products/${productId}/pricing-policy`,
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(services.getPricingPolicy).toHaveBeenCalledWith(productId);
+    expect(response.json()).toMatchObject({
+      success: true,
+      data: { productId, minimumPrice: 165 },
     });
   });
 
