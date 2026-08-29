@@ -3,6 +3,7 @@ export {
   DigitalDeliveryMethod,
   InventoryAvailability,
   MerchantStatus,
+  OfferStatus,
   Prisma,
   ProductCategory,
   ServiceDeliveryMode,

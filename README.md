@@ -171,6 +171,19 @@ The structured Merchant form uses these implemented endpoints:
 
 `variantKey` must be URL-encoded when it contains spaces, semicolons, or equals signs. Successful and failed requests use the shared response envelope defined in `packages/contracts`.
 
+## Consumer discovery REST API
+
+TIM's Agent and the future MCP adapters use these implemented discovery operations:
+
+| Operation       | Method | Endpoint                   |
+| --------------- | ------ | -------------------------- |
+| Search products | `POST` | `/v1/search`               |
+| Get product     | `GET`  | `/v1/products/{productId}` |
+| Check inventory | `POST` | `/v1/inventory/check`      |
+| Request offers  | `POST` | `/v1/offers`               |
+
+The deterministic demo intent (`Nike`, `US 9`, budget `S$180`) finds both matching merchants, then returns only the policy-compliant `Kent Ridge Sports` offer at `S$175`. Offers expire after ten minutes. Public product and offer responses never include merchant minimum prices or private pricing rules.
+
 ## Current implementation status
 
-The Commerce database schema, fixed four-category taxonomy, demo seed, reusable Merchant/Catalog/Inventory/Pricing domain services, and Merchant REST API are implemented. Product search, dynamic offer generation, agent behavior, order creation, payment simulation, and remote MCP transport remain in later feature phases.
+The Commerce database schema, fixed four-category taxonomy, demo seed, reusable Commerce services, Merchant REST API, product discovery, inventory matching, deterministic pricing, and time-limited Offer generation are implemented. Agent behavior, order creation, payment simulation, and remote MCP transport remain in later feature phases.

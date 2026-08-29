@@ -5,6 +5,7 @@ import { getCommerceDatabase, type CommerceDependencies } from "../database.js";
 import { throwNotFound, throwValidationError } from "../errors.js";
 import {
   requireNonNegative,
+  requireNonNegativeInteger,
   requirePercentage,
   roundMoney,
 } from "../validation.js";
@@ -30,6 +31,74 @@ export type PricingPolicyRecord = {
   createdAt: string;
   updatedAt: string;
 };
+
+export type OfferPriceInput = {
+  listedPrice: number;
+  availableInventory: number;
+  negotiationEnabled: boolean;
+  minimumPrice: number | null;
+  maxDiscountPercent: number | null;
+};
+
+export type OfferPriceResult = {
+  offeredPrice: number;
+  discountAmount: number;
+  explanation: string;
+};
+
+export function calculateOfferPrice(input: OfferPriceInput): OfferPriceResult {
+  const listedPrice = roundMoney(
+    requireNonNegative(input.listedPrice, "listedPrice"),
+  );
+
+  if (!input.negotiationEnabled) {
+    return {
+      offeredPrice: listedPrice,
+      discountAmount: 0,
+      explanation: "Listed price",
+    };
+  }
+
+  const availableInventory = requireNonNegativeInteger(
+    input.availableInventory,
+    "availableInventory",
+  );
+  const minimumPrice =
+    input.minimumPrice === null
+      ? listedPrice
+      : roundMoney(requireNonNegative(input.minimumPrice, "minimumPrice"));
+  const maxDiscountPercent =
+    input.maxDiscountPercent === null
+      ? null
+      : requirePercentage(input.maxDiscountPercent, "maxDiscountPercent");
+
+  if (minimumPrice > listedPrice) {
+    throwValidationError("minimumPrice must not exceed listedPrice.", {
+      minimumPrice,
+      listedPrice,
+    });
+  }
+
+  const inventoryDiscount =
+    availableInventory > 20 ? 20 : availableInventory < 5 ? 5 : 10;
+  const percentageLimit =
+    maxDiscountPercent === null
+      ? inventoryDiscount
+      : (listedPrice * maxDiscountPercent) / 100;
+  const allowedDiscount = Math.min(inventoryDiscount, percentageLimit);
+  const offeredPrice = roundMoney(
+    Math.max(listedPrice - allowedDiscount, minimumPrice),
+  );
+
+  return {
+    offeredPrice,
+    discountAmount: roundMoney(listedPrice - offeredPrice),
+    explanation:
+      offeredPrice < listedPrice
+        ? "Inventory promotion applied"
+        : "Listed price",
+  };
+}
 
 function toPricingPolicyRecord(policy: {
   id: string;

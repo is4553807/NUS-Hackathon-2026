@@ -37,8 +37,6 @@ describe("commerce inventory rules", () => {
     expect(
       variantMatchesAttributes(variantKey, {
         size: "us 9",
-        color: "black",
-        delivery: "today",
       }),
     ).toBe(true);
     expect(

@@ -585,7 +585,7 @@ TIM must not reinterpret backend errors as success or invent replacement price o
 
 ## 11. Deterministic Offer Policy for the Demo
 
-This section defines future MVP business behavior. The repository skeleton task must not implement it yet.
+This section defines the deterministic business behavior implemented by the Commerce domain for the MVP.
 
 The rule exists here so both owners can build toward the same deterministic demo result. It may later be replaced by a richer policy engine without changing the v1 transport contract.
 

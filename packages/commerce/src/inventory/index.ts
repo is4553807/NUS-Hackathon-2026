@@ -91,15 +91,16 @@ export function variantMatchesAttributes(
   variantKey: string,
   attributes: ProductAttributes,
 ): boolean {
-  const variantAttributes = Object.entries(parseVariantKey(variantKey));
+  const variantAttributes = parseVariantKey(variantKey);
+  const requestedAttributes = Object.entries(attributes);
 
-  if (variantAttributes.length === 0) return false;
+  if (Object.keys(variantAttributes).length === 0) return false;
 
-  return variantAttributes.every(([key, value]) => {
-    const requestedValue = attributes[key];
+  return requestedAttributes.every(([key, requestedValue]) => {
+    const variantValue = variantAttributes[key];
     return (
-      requestedValue !== undefined &&
-      normalizedAttribute(requestedValue) === normalizedAttribute(value)
+      variantValue !== undefined &&
+      normalizedAttribute(requestedValue) === normalizedAttribute(variantValue)
     );
   });
 }

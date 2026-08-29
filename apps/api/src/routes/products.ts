@@ -14,6 +14,12 @@ export function createProductsRoutes(
   services: CommerceApiServices,
 ): FastifyPluginAsync {
   return async (app) => {
+    app.get("/:productId", async (request, reply) => {
+      const { productId } = ProductIdParamsSchema.parse(request.params);
+      const product = await services.getPublicProduct(productId);
+      return reply.send(successResponse(product));
+    });
+
     app.patch("/:productId", async (request, reply) => {
       const { productId } = ProductIdParamsSchema.parse(request.params);
       const input = UpdateProductBodySchema.parse(request.body);

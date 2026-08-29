@@ -1,3 +1,4 @@
+import { CheckInventoryRequestSchema } from "@visa-commerce/contracts";
 import type { FastifyPluginAsync } from "fastify";
 
 import { successResponse } from "../http/responses.js";
@@ -30,5 +31,21 @@ export function createInventoryRoutes(
 }
 
 export const inventoryRoutes = createInventoryRoutes(
+  defaultCommerceApiServices,
+);
+
+export function createInventoryCheckRoutes(
+  services: CommerceApiServices,
+): FastifyPluginAsync {
+  return async (app) => {
+    app.post("/check", async (request, reply) => {
+      const input = CheckInventoryRequestSchema.parse(request.body);
+      const inventory = await services.checkInventory(input);
+      return reply.send(successResponse(inventory));
+    });
+  };
+}
+
+export const inventoryCheckRoutes = createInventoryCheckRoutes(
   defaultCommerceApiServices,
 );

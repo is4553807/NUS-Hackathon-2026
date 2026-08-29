@@ -3,13 +3,17 @@ import Fastify, { type FastifyInstance } from "fastify";
 import { registerApiErrorHandler } from "./http/error-handler.js";
 import { healthRoutes } from "./routes/health.js";
 import { intentsRoutes } from "./routes/intents.js";
-import { createInventoryRoutes } from "./routes/inventory.js";
+import {
+  createInventoryCheckRoutes,
+  createInventoryRoutes,
+} from "./routes/inventory.js";
 import { createMerchantsRoutes } from "./routes/merchants.js";
-import { offersRoutes } from "./routes/offers.js";
+import { createOffersRoutes } from "./routes/offers.js";
 import { ordersRoutes } from "./routes/orders.js";
 import { paymentsRoutes } from "./routes/payments.js";
 import { createPricingRoutes } from "./routes/pricing.js";
 import { createProductsRoutes } from "./routes/products.js";
+import { createSearchRoutes } from "./routes/search.js";
 import { usersRoutes } from "./routes/users.js";
 import {
   defaultCommerceApiServices,
@@ -43,7 +47,15 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
   void app.register(createPricingRoutes(commerceServices), {
     prefix: "/v1/products",
   });
-  void app.register(offersRoutes, { prefix: "/v1/offers" });
+  void app.register(createSearchRoutes(commerceServices), {
+    prefix: "/v1/search",
+  });
+  void app.register(createInventoryCheckRoutes(commerceServices), {
+    prefix: "/v1/inventory",
+  });
+  void app.register(createOffersRoutes(commerceServices), {
+    prefix: "/v1/offers",
+  });
   void app.register(ordersRoutes, { prefix: "/v1/orders" });
   void app.register(paymentsRoutes, { prefix: "/v1/payments" });
 

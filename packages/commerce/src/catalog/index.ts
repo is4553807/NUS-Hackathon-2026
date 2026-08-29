@@ -18,6 +18,8 @@ import {
   roundMoney,
 } from "../validation.js";
 
+export * from "./search.js";
+
 export type JsonValue =
   string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
 

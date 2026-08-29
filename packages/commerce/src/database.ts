@@ -4,6 +4,8 @@ export type CommerceDatabase = PrismaClient;
 
 export type CommerceDependencies = {
   database?: CommerceDatabase;
+  now?: () => Date;
+  offerTtlMs?: number;
 };
 
 export function getCommerceDatabase(
