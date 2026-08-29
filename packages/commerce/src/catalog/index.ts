@@ -275,6 +275,81 @@ function optionalText(value: string | null | undefined): string | null {
   return value?.trim() || null;
 }
 
+const MAX_SKU_LENGTH = 150;
+
+function skuWords(value: string): string[] {
+  return value
+    .normalize("NFKD")
+    .replaceAll(/[\u0300-\u036f]/g, "")
+    .toUpperCase()
+    .split(/[^A-Z0-9]+/)
+    .filter(Boolean);
+}
+
+function compactSkuCode(value: string, fallback: string): string {
+  const words = skuWords(value);
+  const firstWord = words[0];
+  if (firstWord === undefined) return fallback;
+  if (words.length === 1) return firstWord.slice(0, 12);
+  return words
+    .map((word) => (/^\d+$/.test(word) ? word : word.slice(0, 3)))
+    .join("-")
+    .slice(0, 48)
+    .replace(/-+$/g, "");
+}
+
+function merchantSkuCode(merchantName: string): string {
+  const words = skuWords(merchantName);
+  const firstWord = words[0];
+  if (firstWord === undefined) return "MERCHANT";
+  if (words.length === 1) return firstWord.slice(0, 8);
+  return words
+    .map((word) => word[0] ?? "")
+    .join("")
+    .slice(0, 8);
+}
+
+export function buildAutomaticSku(input: {
+  merchantName: string;
+  productName: string;
+  variantName?: string | null;
+  attributes: ProductAttributes;
+  position: number;
+}): string {
+  const attributeLabel = Object.entries(input.attributes)
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([, value]) => String(value))
+    .join(" ");
+  const variantLabel =
+    optionalText(input.variantName) ??
+    optionalText(attributeLabel) ??
+    `OPTION ${input.position + 1}`;
+  return [
+    merchantSkuCode(input.merchantName),
+    compactSkuCode(input.productName, "PRODUCT"),
+    compactSkuCode(variantLabel, `OPTION-${input.position + 1}`),
+  ]
+    .join("-")
+    .slice(0, 140)
+    .replace(/-+$/g, "");
+}
+
+export function nextAvailableSku(
+  preferredSku: string,
+  usedSkus: ReadonlySet<string>,
+): string {
+  const base = preferredSku.slice(0, MAX_SKU_LENGTH).replace(/-+$/g, "");
+  if (!usedSkus.has(base)) return base;
+
+  for (let copy = 2; ; copy += 1) {
+    const suffix = `-${copy}`;
+    const candidate = `${base
+      .slice(0, MAX_SKU_LENGTH - suffix.length)
+      .replace(/-+$/g, "")}${suffix}`;
+    if (!usedSkus.has(candidate)) return candidate;
+  }
+}
+
 function cleanOptions(values: string[] | undefined): string[] {
   return [
     ...new Set((values ?? []).map((value) => value.trim()).filter(Boolean)),
@@ -674,7 +749,7 @@ export async function createProduct(
   const database = getCommerceDatabase(dependencies);
   const merchant = await database.merchant.findUnique({
     where: { id: input.merchantId },
-    select: { id: true },
+    select: { id: true, name: true },
   });
   if (merchant === null) throwNotFound("Merchant", input.merchantId);
 
@@ -715,6 +790,18 @@ export async function createProduct(
     requireNonNegative(input.basePrice, "basePrice"),
   );
   const product = await database.$transaction(async (transaction) => {
+    const existingSkuRows = await transaction.productVariant.findMany({
+      where: { merchantId: input.merchantId, sku: { not: null } },
+      select: { sku: true },
+    });
+    const usedSkus = new Set(
+      existingSkuRows.flatMap(({ sku }) => (sku === null ? [] : [sku])),
+    );
+    for (const variant of input.variants) {
+      const suppliedSku = optionalText(variant.sku);
+      if (suppliedSku !== null) usedSkus.add(suppliedSku);
+    }
+
     const created = await transaction.product.create({
       data: {
         merchant: { connect: { id: input.merchantId } },
@@ -741,13 +828,27 @@ export async function createProduct(
       },
     });
 
-    for (const variant of input.variants) {
+    for (const [index, variant] of input.variants.entries()) {
+      const suppliedSku = optionalText(variant.sku);
+      const sku =
+        suppliedSku ??
+        nextAvailableSku(
+          buildAutomaticSku({
+            merchantName: merchant.name,
+            productName: input.name,
+            variantName: variant.name,
+            attributes: variant.attributes,
+            position: index,
+          }),
+          usedSkus,
+        );
+      usedSkus.add(sku);
       await transaction.productVariant.create({
         data: {
           merchantId: input.merchantId,
           productId: created.id,
           externalId: optionalText(variant.externalId),
-          sku: optionalText(variant.sku),
+          sku,
           name: optionalText(variant.name),
           attributes: variant.attributes as Prisma.InputJsonObject,
           listedPrice: roundMoney(

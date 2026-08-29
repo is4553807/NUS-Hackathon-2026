@@ -171,7 +171,7 @@ The catalog is standardized in layers instead of forcing every product into one 
 4. Stable core columns hold identity, price, currency, billing, availability, and lifecycle data. Category-specific attributes live in validated JSONB.
 5. `ProductVariant` owns the SKU, sellable price, variant attributes, and inventory link. Inventory and offers reference the stable `variantId`, never a generated attribute string.
 
-Merchant forms first fetch the selected category schema and generate only the relevant fields. For CSV onboarding, each merchant maps its own headers to canonical paths such as `product.name`, `variant.sku`, or `variant.attributes.storage`. The saved, versioned import profile can be reused for later uploads. This keeps merchant input flexible while giving search and the MCP server one canonical catalog shape. See [Flexible Catalog and Merchant Onboarding](./docs/catalog-and-onboarding.md).
+Merchant forms first fetch the selected category schema and generate only the relevant fields. Merchants do not need to invent platform identifiers: the backend creates a readable, merchant-scoped SKU when one is not supplied, while SKU and external-ID inputs stay inside an optional advanced section for merchants syncing an existing POS, ERP, or online store. For CSV onboarding, each merchant maps its own headers to canonical paths such as `product.name`, `variant.sku`, or `variant.attributes.storage`. The saved, versioned import profile can be reused for later uploads. This keeps merchant input flexible while giving search and the MCP server one canonical catalog shape. See [Flexible Catalog and Merchant Onboarding](./docs/catalog-and-onboarding.md).
 
 ## Merchant REST API
 

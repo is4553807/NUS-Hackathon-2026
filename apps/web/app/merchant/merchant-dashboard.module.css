@@ -1358,6 +1358,35 @@
   font-size: 8px;
 }
 
+.advancedFields {
+  grid-column: 1 / -1;
+  padding: 11px 12px;
+  border: 1px solid #e2e7f0;
+  border-radius: 10px;
+  background: #f8faff;
+}
+
+.advancedFields summary {
+  cursor: pointer;
+  color: #536078;
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.advancedFields > p {
+  margin: 7px 0 0;
+  color: #8b95a8;
+  font-size: 8px;
+  line-height: 1.45;
+}
+
+.advancedFieldsGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 13px;
+  margin-top: 12px;
+}
+
 .checkField,
 .checkFieldWide,
 .switchField {
@@ -1677,6 +1706,14 @@
   .fieldWide,
   .checkFieldWide {
     grid-column: auto;
+  }
+
+  .advancedFields {
+    grid-column: auto;
+  }
+
+  .advancedFieldsGrid {
+    grid-template-columns: 1fr;
   }
 
   .formFooter {

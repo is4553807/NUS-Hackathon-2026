@@ -81,11 +81,11 @@ A `ProductVariant` represents the exact thing that can be bought: a shoe size an
 1. Load `GET /v1/categories` and let the merchant choose the closest leaf category.
 2. Load `GET /v1/categories/{categoryId}/schema`.
 3. Generate product and variant fields from the schema.
-4. Submit canonical data to `POST /v1/merchants/{merchantId}/products`.
+4. Submit canonical data to `POST /v1/merchants/{merchantId}/products`. If SKU is blank, the backend generates a readable merchant-scoped SKU and adds a numeric suffix when needed.
 5. Update stock through `PUT /v1/variants/{variantId}/inventory`.
 6. Update SKU, price, status, or variant attributes through `PATCH /v1/variants/{variantId}` without replacing its stable ID.
 
-The Merchant workspace implements this flow. Removing a product from discovery uses the reversible `active: false` state rather than a physical delete, preserving order, payment, and audit relationships.
+The Merchant workspace implements this flow. SKU and external-ID fields are hidden under an optional advanced section because most SMEs should not need to create technical identifiers by hand; those fields remain available for merchants syncing an existing POS, ERP, or online store. The internal stable `variantId` is never merchant input. Removing a product from discovery uses the reversible `active: false` state rather than a physical delete, preserving order, payment, and audit relationships.
 
 ### CSV onboarding
 

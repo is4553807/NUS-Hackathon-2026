@@ -2,8 +2,10 @@ import { InventoryAvailability, ProductKind } from "@visa-commerce/db";
 import { describe, expect, it } from "vitest";
 
 import {
+  buildAutomaticSku,
   calculateAvailableQuantity,
   deriveInventoryAvailability,
+  nextAvailableSku,
   roundMoney,
   validateCategoryAttributes,
   validateImportMapping,
@@ -123,5 +125,25 @@ describe("commerce money rules", () => {
   it("rounds monetary values to two decimal places", () => {
     expect(roundMoney(19.999)).toBe(20);
     expect(roundMoney(19.994)).toBe(19.99);
+  });
+});
+
+describe("merchant-friendly SKU generation", () => {
+  it("builds a readable SKU when the merchant leaves it blank", () => {
+    expect(
+      buildAutomaticSku({
+        merchantName: "Kent Ridge Sports",
+        productName: "Nike GT Cut 3",
+        variantName: "US 10 / Black",
+        attributes: { size: "US 10", color: "Black" },
+        position: 0,
+      }),
+    ).toBe("KRS-NIK-GT-CUT-3-US-10-BLA");
+  });
+
+  it("adds a suffix when an automatically generated SKU already exists", () => {
+    expect(
+      nextAvailableSku("KRS-GTC3-US10-BLK", new Set(["KRS-GTC3-US10-BLK"])),
+    ).toBe("KRS-GTC3-US10-BLK-2");
   });
 });

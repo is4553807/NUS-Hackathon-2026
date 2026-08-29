@@ -205,10 +205,6 @@ function CoreProductFields({ product }: { product?: MerchantProduct }) {
         <input defaultValue={product?.brand ?? ""} name="brand" />
       </label>
       <label className={styles.field}>
-        <span>Merchant product ID</span>
-        <input defaultValue={product?.externalId ?? ""} name="externalId" />
-      </label>
-      <label className={styles.field}>
         <span>
           Base price (SGD) <em>Required</em>
         </span>
@@ -237,6 +233,19 @@ function CoreProductFields({ product }: { product?: MerchantProduct }) {
           rows={3}
         />
       </label>
+      <details className={styles.advancedFields}>
+        <summary>Already use your own product IDs?</summary>
+        <p>
+          Optional. Open this only when syncing an existing POS, ERP, or online
+          store.
+        </p>
+        <div className={styles.advancedFieldsGrid}>
+          <label className={styles.fieldWide}>
+            <span>External system product ID</span>
+            <input defaultValue={product?.externalId ?? ""} name="externalId" />
+          </label>
+        </div>
+      </details>
     </div>
   );
 }
@@ -658,17 +667,6 @@ export function AddProductButton({
                         />
                       </label>
                       <label className={styles.field}>
-                        <span>SKU</span>
-                        <input
-                          name={`variant.${id}.sku`}
-                          placeholder="MERCHANT-SKU-001"
-                        />
-                      </label>
-                      <label className={styles.field}>
-                        <span>Variant external ID</span>
-                        <input name={`variant.${id}.externalId`} />
-                      </label>
-                      <label className={styles.field}>
                         <span>Price override (SGD)</span>
                         <input
                           min="0"
@@ -678,6 +676,26 @@ export function AddProductButton({
                           type="number"
                         />
                       </label>
+                      <details className={styles.advancedFields}>
+                        <summary>Already use your own SKU or IDs?</summary>
+                        <p>
+                          Optional. We generate a unique SKU automatically when
+                          this is left blank.
+                        </p>
+                        <div className={styles.advancedFieldsGrid}>
+                          <label className={styles.field}>
+                            <span>Your existing SKU</span>
+                            <input
+                              name={`variant.${id}.sku`}
+                              placeholder="Optional"
+                            />
+                          </label>
+                          <label className={styles.field}>
+                            <span>External system variant ID</span>
+                            <input name={`variant.${id}.externalId`} />
+                          </label>
+                        </div>
+                      </details>
                       {definitionsFor(schema, "variant").map(
                         ([key, definition]) => (
                           <AttributeField
@@ -1178,7 +1196,7 @@ export function VariantManagementButton({
       </button>
       {open ? (
         <Modal
-          description={`${product.name} · Stable variant ID ${variant.variantId.slice(0, 8)}…`}
+          description={`${product.name} · Changes sync to discovery and inventory.`}
           eyebrow="Variant and inventory"
           onClose={() => setOpen(false)}
           title={variant.name ?? variant.sku ?? "Manage variant"}
@@ -1189,17 +1207,6 @@ export function VariantManagementButton({
               <label className={styles.field}>
                 <span>Variant name</span>
                 <input defaultValue={variant.name ?? ""} name="name" />
-              </label>
-              <label className={styles.field}>
-                <span>SKU</span>
-                <input defaultValue={variant.sku ?? ""} name="sku" />
-              </label>
-              <label className={styles.field}>
-                <span>External ID</span>
-                <input
-                  defaultValue={variant.externalId ?? ""}
-                  name="externalId"
-                />
               </label>
               <label className={styles.field}>
                 <span>
@@ -1251,6 +1258,26 @@ export function VariantManagementButton({
                   <small>Inactive variants are excluded from discovery.</small>
                 </span>
               </label>
+              <details className={styles.advancedFields}>
+                <summary>Already use your own SKU or IDs?</summary>
+                <p>
+                  Optional integration fields. The platform keeps its own
+                  internal variant ID automatically.
+                </p>
+                <div className={styles.advancedFieldsGrid}>
+                  <label className={styles.field}>
+                    <span>Your existing SKU</span>
+                    <input defaultValue={variant.sku ?? ""} name="sku" />
+                  </label>
+                  <label className={styles.field}>
+                    <span>External system variant ID</span>
+                    <input
+                      defaultValue={variant.externalId ?? ""}
+                      name="externalId"
+                    />
+                  </label>
+                </div>
+              </details>
             </div>
             <FeedbackMessage feedback={feedback} />
             <div className={styles.formFooter}>
