@@ -23,7 +23,7 @@ packages/commerce
 packages/db
 ```
 
-SANGYOON also owns future merchant, product, inventory, pricing-policy, offer, order, and payment work.
+SANGYOON also owns merchant, product, inventory, pricing-policy, offer, order, payment, and MCP commerce work.
 
 ## Shared
 

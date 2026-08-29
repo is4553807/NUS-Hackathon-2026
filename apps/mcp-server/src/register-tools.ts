@@ -7,13 +7,20 @@ import { registerGetProductTool } from "./tools/get-product.js";
 import { registerInitiatePaymentTool } from "./tools/initiate-payment.js";
 import { registerRequestOffersTool } from "./tools/request-offers.js";
 import { registerSearchProductsTool } from "./tools/search-products.js";
+import {
+  defaultCommerceMcpServices,
+  type CommerceMcpServices,
+} from "./services.js";
 
-export function registerTools(server: McpServer): void {
-  registerSearchProductsTool(server);
-  registerGetProductTool(server);
-  registerCheckInventoryTool(server);
-  registerRequestOffersTool(server);
-  registerCreateOrderTool(server);
-  registerInitiatePaymentTool(server);
-  registerGetPaymentStatusTool(server);
+export function registerTools(
+  server: McpServer,
+  services: CommerceMcpServices = defaultCommerceMcpServices,
+): void {
+  registerSearchProductsTool(server, services);
+  registerGetProductTool(server, services);
+  registerCheckInventoryTool(server, services);
+  registerRequestOffersTool(server, services);
+  registerCreateOrderTool(server, services);
+  registerInitiatePaymentTool(server, services);
+  registerGetPaymentStatusTool(server, services);
 }

@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import {
+  CategoryIdSchema,
   CurrencyCodeSchema,
   MoneySchema,
   ProductAttributesSchema,
@@ -8,9 +9,19 @@ import {
   UuidSchema,
 } from "./common.js";
 
+export const COMMERCE_DOMAINS = [
+  "retail_goods",
+  "services_subscriptions",
+  "bookings",
+] as const;
+
+export const CommerceDomainSchema = z.enum(COMMERCE_DOMAINS);
+
 export const UserIntentSchema = z.object({
   intentId: UuidSchema,
-  category: z.string().trim().min(1),
+  query: z.string().trim().min(1),
+  commerceDomain: CommerceDomainSchema,
+  categoryId: CategoryIdSchema.nullable(),
   budgetMax: MoneySchema.positive(),
   currency: CurrencyCodeSchema,
   quantity: z.number().int().min(1),
@@ -20,4 +31,5 @@ export const UserIntentSchema = z.object({
   deliveryDeadline: TimestampSchema.nullable(),
 });
 
+export type CommerceDomain = z.infer<typeof CommerceDomainSchema>;
 export type UserIntent = z.infer<typeof UserIntentSchema>;

@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import {
+  CategoryIdSchema,
   CurrencyCodeSchema,
   MoneySchema,
   ProductAttributesSchema,
@@ -10,7 +11,7 @@ import {
 import { OfferSchema } from "./offer.js";
 import { OrderRequestSchema } from "./order-request.js";
 import { PaymentResultSchema } from "./payment-result.js";
-import { UserIntentSchema } from "./user-intent.js";
+import { CommerceDomainSchema, UserIntentSchema } from "./user-intent.js";
 
 export const SearchProductsRequestSchema = z.object({
   intent: UserIntentSchema,
@@ -22,7 +23,9 @@ export const ProductSearchResultSchema = z.object({
   merchantName: z.string().trim().min(1),
   productName: z.string().trim().min(1),
   brand: z.string().trim().min(1).nullable(),
-  category: z.string().trim().min(1),
+  commerceDomain: CommerceDomainSchema,
+  categoryId: CategoryIdSchema,
+  variantId: UuidSchema,
   listedPrice: MoneySchema,
   currency: CurrencyCodeSchema,
   matchedAttributes: ProductAttributesSchema,
@@ -45,7 +48,7 @@ export const CheckInventoryRequestSchema = z.object({
 export const CheckInventoryDataSchema = z.object({
   available: z.boolean(),
   quantityAvailable: z.number().int().nonnegative(),
-  variantKey: z.string().trim().min(1),
+  variantId: UuidSchema.nullable(),
   checkedAt: TimestampSchema,
 });
 
@@ -81,12 +84,14 @@ export const OrderResultSchema = z.object({
 
 export const CreateOrderRequestSchema = OrderRequestSchema;
 
-export const InitiatePaymentRequestSchema = z.object({
-  requestId: UuidSchema,
-  orderId: UuidSchema,
-  paymentMethod: z.literal("mock_visa"),
-  mockPaymentToken: z.string().trim().min(1),
-});
+export const InitiatePaymentRequestSchema = z
+  .object({
+    requestId: UuidSchema,
+    orderId: UuidSchema,
+    paymentMethod: z.literal("mock_visa"),
+    paymentMethodId: UuidSchema.nullable().optional(),
+  })
+  .strict();
 
 export const GetPaymentStatusRequestSchema = z.object({
   paymentId: UuidSchema,
