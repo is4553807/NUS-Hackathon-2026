@@ -458,7 +458,8 @@ model Payment {
   provider               String        @default("Visa") @db.VarChar(100)
   amount                 Decimal       @db.Decimal(12, 2)
   currency               String        @default("SGD") @db.Char(3)
-  paymentToken           String?       @map("payment_token")
+  paymentMethodId         String?      @map("payment_method_id") @db.Uuid
+  paymentTokenFingerprint String?      @map("payment_token_fingerprint") @db.Char(64)
   cardholderVerified     Boolean       @default(false) @map("cardholder_verified")
   status                 PaymentStatus @default(PENDING)
   authorizationReference String?       @map("authorization_reference") @db.VarChar(255)
@@ -467,8 +468,32 @@ model Payment {
   createdAt              DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt              DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  order Order @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  order         Order          @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  paymentMethod PaymentMethod? @relation(fields: [paymentMethodId], references: [id], onDelete: Restrict)
 
   @@index([orderId, status, createdAt])
+  @@index([paymentMethodId, createdAt])
   @@map("payments")
+}
+
+model PaymentMethod {
+  id                    String   @id @default(uuid()) @db.Uuid
+  userId                String   @map("user_id") @db.Uuid
+  provider              String   @default("Visa") @db.VarChar(100)
+  providerCredentialRef String   @unique @map("provider_credential_ref")
+  label                 String   @db.VarChar(100)
+  cardBrand             String   @default("Visa") @map("card_brand") @db.VarChar(50)
+  lastFour              String   @map("last_four") @db.Char(4)
+  expiryMonth           Int      @map("expiry_month")
+  expiryYear            Int      @map("expiry_year")
+  cardholderVerified    Boolean  @default(false) @map("cardholder_verified")
+  isDefault             Boolean  @default(false) @map("is_default")
+  active                Boolean  @default(true)
+  createdAt             DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt             DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  payments Payment[]
+
+  @@index([userId, active])
+  @@map("payment_methods")
 }

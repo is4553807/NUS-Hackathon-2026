@@ -11,7 +11,7 @@ import {
 import { createMerchantsRoutes } from "./routes/merchants.js";
 import { createOffersRoutes } from "./routes/offers.js";
 import { createOrdersRoutes } from "./routes/orders.js";
-import { paymentsRoutes } from "./routes/payments.js";
+import { createPaymentsRoutes } from "./routes/payments.js";
 import { createPricingRoutes } from "./routes/pricing.js";
 import { createProductsRoutes } from "./routes/products.js";
 import { createSearchRoutes } from "./routes/search.js";
@@ -63,7 +63,9 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
   void app.register(createOrdersRoutes(commerceServices), {
     prefix: "/v1/orders",
   });
-  void app.register(paymentsRoutes, { prefix: "/v1/payments" });
+  void app.register(createPaymentsRoutes(commerceServices), {
+    prefix: "/v1/payments",
+  });
 
   return app;
 }

@@ -84,12 +84,14 @@ export const OrderResultSchema = z.object({
 
 export const CreateOrderRequestSchema = OrderRequestSchema;
 
-export const InitiatePaymentRequestSchema = z.object({
-  requestId: UuidSchema,
-  orderId: UuidSchema,
-  paymentMethod: z.literal("mock_visa"),
-  mockPaymentToken: z.string().trim().min(1),
-});
+export const InitiatePaymentRequestSchema = z
+  .object({
+    requestId: UuidSchema,
+    orderId: UuidSchema,
+    paymentMethod: z.literal("mock_visa"),
+    paymentMethodId: UuidSchema.nullable().optional(),
+  })
+  .strict();
 
 export const GetPaymentStatusRequestSchema = z.object({
   paymentId: UuidSchema,

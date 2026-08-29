@@ -9,6 +9,7 @@ export {
   MerchantStatus,
   OfferStatus,
   OrderStatus,
+  PaymentStatus,
   Prisma,
   ProductKind,
   ServiceDeliveryMode,

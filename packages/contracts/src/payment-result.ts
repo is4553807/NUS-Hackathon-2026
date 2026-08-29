@@ -43,7 +43,7 @@ export const PaymentResultSchema = z
     }
 
     if (
-      ["declined", "failed", "cancelled"].includes(payment.status) &&
+      payment.status !== "authorized" &&
       payment.authorizationReference !== null
     ) {
       context.addIssue({
@@ -51,6 +51,31 @@ export const PaymentResultSchema = z
         message:
           "An unsuccessful payment cannot have an authorizationReference",
         path: ["authorizationReference"],
+      });
+    }
+
+    if (
+      payment.status === "authorized" &&
+      (!payment.cardholderVerified ||
+        payment.failureCode !== null ||
+        payment.failureMessage !== null)
+    ) {
+      context.addIssue({
+        code: "custom",
+        message:
+          "An authorized payment must be verified and cannot contain failure fields",
+        path: ["status"],
+      });
+    }
+
+    if (
+      ["declined", "failed"].includes(payment.status) &&
+      (payment.failureCode === null || payment.failureMessage === null)
+    ) {
+      context.addIssue({
+        code: "custom",
+        message: "A declined or failed payment requires safe failure details",
+        path: ["failureCode"],
       });
     }
   });

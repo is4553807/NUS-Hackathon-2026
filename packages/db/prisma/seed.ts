@@ -981,6 +981,67 @@ const importProfiles: Prisma.MerchantImportProfileCreateManyInput[] = [
   },
 ];
 
+const demoUserId = "643f3382-40b2-4343-b4bf-4d62d51da5fb";
+
+const paymentMethods: Prisma.PaymentMethodCreateManyInput[] = [
+  {
+    id: "e1111111-1111-4111-8111-111111111111",
+    userId: demoUserId,
+    provider: "Visa",
+    providerCredentialRef: "vault_mock_visa_authorized",
+    label: "Visa ending 4242",
+    cardBrand: "Visa",
+    lastFour: "4242",
+    expiryMonth: 12,
+    expiryYear: 2030,
+    cardholderVerified: true,
+    isDefault: true,
+    active: true,
+  },
+  {
+    id: "e2222222-2222-4222-8222-222222222222",
+    userId: demoUserId,
+    provider: "Visa",
+    providerCredentialRef: "vault_mock_visa_declined",
+    label: "Visa decline scenario",
+    cardBrand: "Visa",
+    lastFour: "0002",
+    expiryMonth: 12,
+    expiryYear: 2030,
+    cardholderVerified: true,
+    isDefault: false,
+    active: true,
+  },
+  {
+    id: "e3333333-3333-4333-8333-333333333333",
+    userId: demoUserId,
+    provider: "Visa",
+    providerCredentialRef: "vault_mock_visa_verification",
+    label: "Visa verification scenario",
+    cardBrand: "Visa",
+    lastFour: "0003",
+    expiryMonth: 12,
+    expiryYear: 2030,
+    cardholderVerified: false,
+    isDefault: false,
+    active: true,
+  },
+  {
+    id: "e4444444-4444-4444-8444-444444444444",
+    userId: demoUserId,
+    provider: "Visa",
+    providerCredentialRef: "vault_mock_visa_failed",
+    label: "Visa failure scenario",
+    cardBrand: "Visa",
+    lastFour: "0004",
+    expiryMonth: 12,
+    expiryYear: 2030,
+    cardholderVerified: false,
+    isDefault: false,
+    active: true,
+  },
+];
+
 async function main(): Promise<void> {
   const prisma = getPrismaClient();
 
@@ -1082,6 +1143,14 @@ async function main(): Promise<void> {
           update: data,
         });
       }
+      for (const paymentMethod of paymentMethods) {
+        const { id, ...data } = paymentMethod;
+        await transaction.paymentMethod.upsert({
+          where: { id },
+          create: paymentMethod,
+          update: data,
+        });
+      }
 
       return {
         categories: await transaction.category.count({
@@ -1099,12 +1168,18 @@ async function main(): Promise<void> {
         inventory: await transaction.inventory.count({
           where: { id: { in: inventory.map(({ id }) => id as string) } },
         }),
+        paymentMethods: await transaction.paymentMethod.count({
+          where: {
+            id: { in: paymentMethods.map(({ id }) => id as string) },
+          },
+        }),
       };
     });
 
     console.log(
       `Seeded ${result.categories} categories, ${result.merchants} merchants, ` +
-        `${result.products} products, ${result.variants} variants, and ${result.inventory} inventory records.`,
+        `${result.products} products, ${result.variants} variants, ${result.inventory} inventory records, ` +
+        `and ${result.paymentMethods} saved payment methods.`,
     );
   } finally {
     await prisma.$disconnect();

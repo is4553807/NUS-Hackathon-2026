@@ -1,4 +1,4 @@
-# Visa x NUS Hackathon - Shared API Contract v1.1
+# Visa x NUS Hackathon - Shared API Contract v1.2
 
 > Status: **Frozen for MVP**  
 > Owners: **SANGYOON (Merchant, Commerce, and MCP)** and **TIM (Consumer, Agent, and Telegram)**  
@@ -347,9 +347,11 @@ type PaymentResult = {
 - `pending` and `requires_verification` are not successful states.
 - `declined`, `failed`, and `cancelled` must have a null `authorizationReference`.
 - `authorized` must have a non-null `authorizationReference`.
+- `authorized` must have `cardholderVerified: true` and null failure fields.
+- `declined` and `failed` must include safe `failureCode` and `failureMessage` values.
 - `amount` and `currency` must exactly match the order.
 - `failureMessage` contains only information that is safe to show to the user.
-- Never return a payment token, raw card data, or gateway secret.
+- Never return a provider credential reference, payment token, raw card data, or gateway secret.
 
 ### 7.3 Authorized example
 
@@ -508,12 +510,17 @@ type InitiatePaymentRequest = {
   requestId: string;
   orderId: string;
   paymentMethod: "mock_visa";
-  mockPaymentToken: string;
+  paymentMethodId?: string | null;
 };
 ```
 
 - `requestId` is the idempotency key for payment retries.
-- TIM must never send raw card data to the commerce backend.
+- Omit `paymentMethodId` or send `null` to use the Order user's default saved payment method.
+- A supplied `paymentMethodId` must be active and belong to the same `userId` as the Order.
+- The amount and currency are always loaded from the Order. TIM never supplies them.
+- TIM and the model must never receive or send PAN, CVV, or provider credential references.
+- Reusing a `requestId` returns the same Payment; a conflicting Order or payment method is rejected.
+- Only one pending, verification-required, or authorized Payment may exist for an Order.
 - The success response data is `PaymentResult`.
 
 ### 9.7 `get_payment_status`
@@ -728,10 +735,10 @@ User sends a message
 
 ### Payment and safety
 
-- [ ] Mock Visa authorization and decline scenarios both work.
-- [ ] Only `authorized` is displayed as success.
-- [ ] Raw card numbers and CVVs never appear in the database, logs, or API responses.
-- [ ] The payment amount matches the order amount.
+- [x] Mock Visa authorization and decline scenarios both work.
+- [x] Only `authorized` is displayed as success.
+- [x] Raw card numbers and CVVs never appear in the database, logs, or API responses.
+- [x] The payment amount matches the order amount.
 - [ ] The end-to-end `discover -> decide -> pay` demo completes inside the conversation.
 
 ---
@@ -755,3 +762,4 @@ A change marked `Backward compatible: no` must not be merged until both owners a
 
 - `2026-08-29` - v1.0 initial contract frozen and aligned with the TypeScript repository architecture.
 - `2026-08-30` - v1.1 replaced the rigid four-value product category with commerce domains, hierarchical category IDs, versioned category schemas, and stable variant IDs. Added the category/form and CSV mapping profile endpoints.
+- `2026-08-30` - v1.2 replaced Agent-visible mock payment tokens with user-owned saved `paymentMethodId` references, default-method checkout, payment idempotency, and terminal-failure inventory release.

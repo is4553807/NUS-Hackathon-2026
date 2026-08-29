@@ -2,7 +2,7 @@
 
 Conversational commerce prototype for the Visa x NUS Hackathon. The repository is a TypeScript monorepo that separates user-facing applications, transport adapters, shared contracts, and reusable domain packages so TIM and SANGYOON can develop in parallel.
 
-The repository foundation, shared transport validation, flexible Commerce catalog, Merchant/Catalog/Inventory/Pricing services, search, offers, and orders are implemented. Payment, the merchant UI, remote MCP transport, and agent behavior remain in later phases.
+The repository foundation, shared transport validation, flexible Commerce catalog, Merchant/Catalog/Inventory/Pricing services, search, offers, orders, and a safe mock Visa payment flow are implemented. The merchant UI, remote MCP transport, and agent behavior remain in later phases.
 
 ## Architecture
 
@@ -31,7 +31,8 @@ Consumer Web / Telegram             Merchant Form
 - The consumer agent accesses commerce capabilities only through the Commerce MCP tools defined in `SHARED_API_CONTRACT.md`.
 - REST handlers and MCP tool handlers are thin adapters over the same services in `packages/commerce`; business rules must not be duplicated in transport code.
 - Only the trusted commerce/database layer can read private pricing policies or persist data. MCP responses expose only contract-approved fields.
-- Search and inventory tools are read operations. Order and payment tools must enforce explicit user confirmation, validation, and idempotency in the domain layer.
+- Search and inventory tools are read operations. Order and payment tools enforce transaction-specific confirmation, saved-payment-method ownership, validation, and idempotency in the domain layer.
+- The Agent sees only a safe `paymentMethodId` or requests the user's default method. Provider credential references stay inside the Commerce backend; raw PAN and CVV are rejected at the API boundary.
 
 The MCP server currently uses local `stdio` transport. The final integration will also expose Streamable HTTP so OpenAI's Responses API can call the remote MCP server. OpenAI documents remote MCP servers as external tool providers reached through a `server_url`, with optional authentication and per-tool approval controls. See the [official OpenAI MCP and Connectors guide](https://developers.openai.com/api/docs/guides/tools-connectors-mcp).
 
@@ -69,7 +70,7 @@ docs/           Architecture and ownership documentation
 - `apps/mcp-server`
 - `packages/commerce`
 - Commerce-side work in `packages/db`
-- Future merchants, products, inventory, pricing, offers, orders, and payments
+- Merchant, product, inventory, pricing, offer, order, and payment development
 
 ### Shared
 
@@ -154,7 +155,7 @@ pnpm db:studio
 
 `pnpm db:generate` does not require a live database. Migrations, seed data, Studio, and runtime database access require a valid `DATABASE_URL`.
 
-`pnpm db:seed` is idempotent. It creates or updates 21 category nodes, seven category schemas, six merchants, six products, eleven variants, inventory, pricing policies, and one example CSV mapping profile without deleting unrelated local data. The sample catalog includes both shoes and an iPhone, proving that physical goods do not share shoe-specific fields.
+`pnpm db:seed` is idempotent. It creates or updates 21 category nodes, seven category schemas, six merchants, six products, eleven variants, inventory, pricing policies, one example CSV mapping profile, and four saved mock Visa payment methods without deleting unrelated local data. The sample catalog includes both shoes and an iPhone, proving that physical goods do not share shoe-specific fields.
 
 ## Flexible catalog model
 
@@ -191,18 +192,26 @@ Successful and failed requests use the shared response envelope defined in `pack
 
 TIM's Agent and the future MCP adapters use these implemented discovery operations:
 
-| Operation       | Method | Endpoint                   |
-| --------------- | ------ | -------------------------- |
-| Search products | `POST` | `/v1/search`               |
-| Get product     | `GET`  | `/v1/products/{productId}` |
-| Check inventory | `POST` | `/v1/inventory/check`      |
-| Request offers  | `POST` | `/v1/offers`               |
-| Create order    | `POST` | `/v1/orders`               |
+| Operation        | Method | Endpoint                   |
+| ---------------- | ------ | -------------------------- |
+| Search products  | `POST` | `/v1/search`               |
+| Get product      | `GET`  | `/v1/products/{productId}` |
+| Check inventory  | `POST` | `/v1/inventory/check`      |
+| Request offers   | `POST` | `/v1/offers`               |
+| Create order     | `POST` | `/v1/orders`               |
+| Initiate payment | `POST` | `/v1/payments`             |
+| Payment status   | `GET`  | `/v1/payments/{paymentId}` |
 
 The deterministic demo intent (`Nike`, `US 9`, budget `S$180`) finds both matching merchants, then returns only the policy-compliant `Kent Ridge Sports` offer at `S$175`. Offers expire after ten minutes. Public product and offer responses never include merchant minimum prices or private pricing rules.
 
 Order creation requires the frozen `OrderRequest` with `userConfirmed: true`. The Commerce transaction revalidates the Offer, expiry, product, merchant, inventory, fulfillment, and current pricing policy before atomically accepting the Offer, reserving inventory, and creating a `payment_pending` Order. Retrying the same `requestId` returns the original Order without reserving inventory again.
 
+## Saved payment and frictionless checkout
+
+The payment call accepts an Order and an optional safe `paymentMethodId`; omitting it uses the confirmed user's default saved method. The amount and currency always come from the Order, never from the Agent. A successful mock Visa authorization changes the Order to `paid`. A decline or processor failure changes it to `payment_failed` and releases reserved inventory. A verification result keeps the Order pending for a future identity-verification step.
+
+The Agent never receives a provider credential, PAN, or CVV. The database stores the saved method's display metadata, an internal provider/vault reference, and only a SHA-256 fingerprint on the Payment audit record. Request IDs make payment retries idempotent, while a database constraint prevents concurrent active authorizations for the same Order. See [Saved Payment and Agent Checkout](./docs/payment-flow.md).
+
 ## Current implementation status
 
-The Commerce database schema, hierarchical taxonomy, versioned category schemas, generic variants, reusable CSV mapping profiles, demo seed, Merchant REST API, product discovery, inventory matching, deterministic pricing, time-limited Offer generation, explicit confirmation, and idempotent Order creation are implemented. CSV file parsing/import execution, merchant UI generation, agent behavior, payment simulation, and remote MCP transport remain in later feature phases.
+The Commerce database schema, hierarchical taxonomy, versioned category schemas, generic variants, reusable CSV mapping profiles, demo seed, Merchant REST API, product discovery, inventory matching, deterministic pricing, time-limited Offer generation, explicit confirmation, idempotent Order creation, saved payment methods, and mock Visa authorization are implemented. CSV file parsing/import execution, merchant UI generation, agent behavior, identity-verification completion, and remote MCP transport remain in later feature phases.

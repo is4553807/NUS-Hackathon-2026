@@ -151,6 +151,20 @@ const order = {
   createdAt: timestamp,
 };
 
+const payment = {
+  orderId: order.orderId,
+  paymentId: "97d7ee95-8462-48e1-b9db-e8f3b69af78c",
+  provider: "Visa" as const,
+  status: "authorized" as const,
+  amount: order.totalAmount,
+  currency: "SGD" as const,
+  cardholderVerified: true,
+  authorizationReference: "VISA-DEMO-C74EF34FF72B4BD4",
+  failureCode: null,
+  failureMessage: null,
+  updatedAt: timestamp,
+};
+
 const services = {
   checkInventory: vi.fn(async () => ({
     available: true,
@@ -175,6 +189,7 @@ const services = {
     schemaVersion: "1.0",
     attributeSchema: { attributes: { size: { type: "string" } } },
   })),
+  getPaymentStatus: vi.fn(async () => payment),
   listCategories: vi.fn(async () => [
     {
       categoryId: product.categoryId,
@@ -199,6 +214,7 @@ const services = {
     }
     return [product];
   }),
+  initiatePayment: vi.fn(async () => payment),
   updateProduct: vi.fn(async () => product),
   upsertInventory: vi.fn(async () => inventory),
   configurePricingPolicy: vi.fn(async () => pricingPolicy),
@@ -582,5 +598,65 @@ describe("Consumer commerce REST API", () => {
       error: { code: "VALIDATION_ERROR" },
     });
     expect(services.createOrder).not.toHaveBeenCalled();
+  });
+
+  it("authorizes a confirmed Order with a saved Visa method", async () => {
+    const payload = {
+      requestId: "d74ef34f-f72b-4bd4-bd5a-bf03f98d5cd3",
+      orderId: order.orderId,
+      paymentMethod: "mock_visa",
+      paymentMethodId: "e1111111-1111-4111-8111-111111111111",
+    };
+    const response = await app.inject({
+      method: "POST",
+      url: "/v1/payments",
+      payload,
+    });
+
+    expect(response.statusCode).toBe(201);
+    expect(response.json()).toMatchObject({
+      success: true,
+      data: {
+        paymentId: payment.paymentId,
+        status: "authorized",
+        amount: 175,
+        cardholderVerified: true,
+      },
+    });
+    expect(services.initiatePayment).toHaveBeenCalledWith(payload);
+  });
+
+  it("reads PaymentResult without exposing payment credentials", async () => {
+    const response = await app.inject({
+      method: "GET",
+      url: `/v1/payments/${payment.paymentId}`,
+    });
+    const body = response.json();
+
+    expect(response.statusCode).toBe(200);
+    expect(body.data).toMatchObject({
+      paymentId: payment.paymentId,
+      status: "authorized",
+    });
+    expect(body.data).not.toHaveProperty("mockPaymentToken");
+    expect(body.data).not.toHaveProperty("paymentTokenFingerprint");
+    expect(body.data).not.toHaveProperty("providerCredentialRef");
+    expect(services.getPaymentStatus).toHaveBeenCalledWith(payment.paymentId);
+  });
+
+  it("rejects raw card data at the payment API boundary", async () => {
+    const response = await app.inject({
+      method: "POST",
+      url: "/v1/payments",
+      payload: {
+        requestId: "d74ef34f-f72b-4bd4-bd5a-bf03f98d5cd3",
+        orderId: order.orderId,
+        paymentMethod: "mock_visa",
+        cardNumber: "4111111111111111",
+      },
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(services.initiatePayment).not.toHaveBeenCalled();
   });
 });
