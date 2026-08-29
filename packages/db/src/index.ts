@@ -4,6 +4,7 @@ export {
   InventoryAvailability,
   MerchantStatus,
   OfferStatus,
+  OrderStatus,
   Prisma,
   ProductCategory,
   ServiceDeliveryMode,

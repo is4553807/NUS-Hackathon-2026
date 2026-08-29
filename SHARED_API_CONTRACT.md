@@ -694,18 +694,18 @@ User sends a message
 
 ### Offer
 
-- [ ] A wrong size or color variant is excluded.
-- [ ] An out-of-stock product is excluded.
-- [ ] An offered price never falls below the merchant minimum.
-- [ ] An over-budget offer is not returned.
-- [ ] Offer expiry is stored and enforced.
+- [x] A wrong size or color variant is excluded.
+- [x] An out-of-stock product is excluded.
+- [x] An offered price never falls below the merchant minimum.
+- [x] An over-budget offer is not returned.
+- [x] Offer expiry is stored and enforced.
 
 ### Order and consent
 
-- [ ] An order is not created unless `userConfirmed === true`.
-- [ ] Retrying the same `requestId` does not create a duplicate order.
-- [ ] An expired offer cannot create an order.
-- [ ] A price or inventory change requires user reconfirmation.
+- [x] An order is not created unless `userConfirmed === true`.
+- [x] Retrying the same `requestId` does not create a duplicate order.
+- [x] An expired offer cannot create an order.
+- [x] A price or inventory change requires user reconfirmation.
 
 ### Payment and safety
 

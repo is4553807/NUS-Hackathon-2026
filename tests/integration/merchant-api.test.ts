@@ -120,6 +120,21 @@ const offer = {
   priceExplanation: "Inventory promotion applied",
 };
 
+const order = {
+  orderId: "c548d08f-3b72-4ef3-875b-b0eb8439dcf9",
+  offerId: offer.offerId,
+  userId: "643f3382-40b2-4343-b4bf-4d62d51da5fb",
+  merchantId,
+  productId,
+  quantity: 1,
+  unitPrice: 175,
+  totalAmount: 175,
+  currency: "SGD" as const,
+  userConfirmed: true as const,
+  status: "payment_pending" as const,
+  createdAt: timestamp,
+};
+
 const services = {
   checkInventory: vi.fn(async () => ({
     available: true,
@@ -128,6 +143,7 @@ const services = {
     checkedAt: timestamp,
   })),
   createMerchant: vi.fn(async () => merchant),
+  createOrder: vi.fn(async () => order),
   createProduct: vi.fn(async () => product),
   getPublicProduct: vi.fn(async () => publicProduct),
   listMerchantProducts: vi.fn(async (requestedMerchantId: string) => {
@@ -398,5 +414,50 @@ describe("Consumer commerce REST API", () => {
         ],
       },
     });
+  });
+
+  it("creates an order only after explicit user confirmation", async () => {
+    const payload = {
+      requestId: "c74ef34f-f72b-4bd4-bd5a-bf03f98d5cd3",
+      userId: order.userId,
+      offerId: offer.offerId,
+      userConfirmed: true,
+      confirmedAt: timestamp,
+      confirmationChannel: "telegram",
+    };
+    const response = await app.inject({
+      method: "POST",
+      url: "/v1/orders",
+      payload,
+    });
+
+    expect(response.statusCode).toBe(201);
+    expect(response.json()).toMatchObject({
+      success: true,
+      data: { orderId: order.orderId, status: "payment_pending" },
+    });
+    expect(services.createOrder).toHaveBeenCalledWith(payload);
+  });
+
+  it("rejects an order without explicit user confirmation", async () => {
+    const response = await app.inject({
+      method: "POST",
+      url: "/v1/orders",
+      payload: {
+        requestId: "c74ef34f-f72b-4bd4-bd5a-bf03f98d5cd3",
+        userId: order.userId,
+        offerId: offer.offerId,
+        userConfirmed: false,
+        confirmedAt: timestamp,
+        confirmationChannel: "telegram",
+      },
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toMatchObject({
+      success: false,
+      error: { code: "VALIDATION_ERROR" },
+    });
+    expect(services.createOrder).not.toHaveBeenCalled();
   });
 });

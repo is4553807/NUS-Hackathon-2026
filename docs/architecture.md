@@ -42,4 +42,4 @@ Circular dependencies are not allowed.
 
 ## Current phase
 
-The repository foundation, shared transport schemas, Commerce database, Merchant REST adapters, product search, inventory matching, deterministic pricing, and time-limited Offer generation are implemented. Orders, payments, and MCP transport remain in later feature phases.
+The repository foundation, shared transport schemas, Commerce database, Merchant REST adapters, product search, inventory matching, deterministic pricing, time-limited Offer generation, and idempotent Order creation are implemented. Payments and MCP transport remain in later feature phases.

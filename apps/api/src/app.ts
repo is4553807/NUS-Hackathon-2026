@@ -9,7 +9,7 @@ import {
 } from "./routes/inventory.js";
 import { createMerchantsRoutes } from "./routes/merchants.js";
 import { createOffersRoutes } from "./routes/offers.js";
-import { ordersRoutes } from "./routes/orders.js";
+import { createOrdersRoutes } from "./routes/orders.js";
 import { paymentsRoutes } from "./routes/payments.js";
 import { createPricingRoutes } from "./routes/pricing.js";
 import { createProductsRoutes } from "./routes/products.js";
@@ -56,7 +56,9 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
   void app.register(createOffersRoutes(commerceServices), {
     prefix: "/v1/offers",
   });
-  void app.register(ordersRoutes, { prefix: "/v1/orders" });
+  void app.register(createOrdersRoutes(commerceServices), {
+    prefix: "/v1/orders",
+  });
   void app.register(paymentsRoutes, { prefix: "/v1/payments" });
 
   return app;

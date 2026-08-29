@@ -181,9 +181,12 @@ TIM's Agent and the future MCP adapters use these implemented discovery operatio
 | Get product     | `GET`  | `/v1/products/{productId}` |
 | Check inventory | `POST` | `/v1/inventory/check`      |
 | Request offers  | `POST` | `/v1/offers`               |
+| Create order    | `POST` | `/v1/orders`               |
 
 The deterministic demo intent (`Nike`, `US 9`, budget `S$180`) finds both matching merchants, then returns only the policy-compliant `Kent Ridge Sports` offer at `S$175`. Offers expire after ten minutes. Public product and offer responses never include merchant minimum prices or private pricing rules.
 
+Order creation requires the frozen `OrderRequest` with `userConfirmed: true`. The Commerce transaction revalidates the Offer, expiry, product, merchant, inventory, fulfillment, and current pricing policy before atomically accepting the Offer, reserving inventory, and creating a `payment_pending` Order. Retrying the same `requestId` returns the original Order without reserving inventory again.
+
 ## Current implementation status
 
-The Commerce database schema, fixed four-category taxonomy, demo seed, reusable Commerce services, Merchant REST API, product discovery, inventory matching, deterministic pricing, and time-limited Offer generation are implemented. Agent behavior, order creation, payment simulation, and remote MCP transport remain in later feature phases.
+The Commerce database schema, fixed four-category taxonomy, demo seed, reusable Commerce services, Merchant REST API, product discovery, inventory matching, deterministic pricing, time-limited Offer generation, explicit confirmation, and idempotent Order creation are implemented. Agent behavior, payment simulation, and remote MCP transport remain in later feature phases.
