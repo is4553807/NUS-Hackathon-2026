@@ -13,8 +13,11 @@ import {
 } from "../../packages/agent/src/domain-types.js";
 import {
   buildExtractionContext,
+  canonicalizeCategoryCandidates,
   mergeExtractedIntent,
 } from "../../packages/agent/src/layers/extract-intent.js";
+import { selectDiscoveryCategories } from "../../packages/agent/src/layers/category-discovery.js";
+import { buildRealIntent } from "../../packages/agent/src/mcp/build-real-intent.js";
 import { composeOfferSummary } from "../../packages/agent/src/offer-summary.js";
 import {
   clearIntentField,
@@ -141,6 +144,14 @@ describe("search rephrasing tolerance", () => {
       aliases: ["consulting", "coaching"],
       level: 1,
     },
+    {
+      categoryId: "bookings.activities",
+      commerceDomain: "bookings",
+      name: "Activities",
+      slug: "activities",
+      aliases: ["experiences", "tours"],
+      level: 1,
+    },
   ];
 
   it("maps equivalent interview-coaching phrases to the same broad retry", async () => {
@@ -159,6 +170,69 @@ describe("search rephrasing tolerance", () => {
     expect({ id: first.broadCategoryId, query: first.broadQuery }).toEqual({
       id: second.broadCategoryId,
       query: second.broadQuery,
+    });
+  });
+
+  it("canonicalizes live category aliases and supports the bookings domain", async () => {
+    expect(
+      canonicalizeCategoryCandidates(
+        ["consumer electronics", "tours", "not-a-real-category"],
+        categories,
+      ),
+    ).toEqual(["retail_goods.electronics", "bookings.activities"]);
+
+    const resolved = await resolveCategory(
+      "bookings.activities",
+      "Sentosa kayaking experience",
+      async () => categories,
+    );
+    expect(resolved).toMatchObject({
+      commerceDomain: "bookings",
+      categoryId: "bookings.activities",
+    });
+  });
+
+  it("uses live candidates and keeps ambiguous discovery capped at three", () => {
+    const selected = selectDiscoveryCategories(
+      draft({
+        productQuery: "experience",
+        categoryCandidates: [
+          "bookings.activities",
+          "retail_goods.electronics",
+          "services.professional",
+          "unknown",
+        ],
+      }),
+      categories,
+    );
+    expect(selected).toEqual([
+      "bookings.activities",
+      "retail_goods.electronics",
+      "services.professional",
+    ]);
+  });
+
+  it("builds a valid booking payload from a date-only schedule", () => {
+    const payload = buildRealIntent(
+      draft({
+        productQuery: "Sentosa kayaking experience",
+        budgetMax: 100,
+        scheduleDeadline: "2026-09-05",
+        requiredAttributes: { date: "2026-09-05" },
+      }),
+      {
+        commerceDomain: "bookings",
+        categoryId: "bookings.activities",
+        broadCategoryId: "bookings.activities",
+        broadQuery: "Activities",
+      },
+    );
+
+    expect(payload).toMatchObject({
+      commerceDomain: "bookings",
+      categoryId: "bookings.activities",
+      productAttributes: { date: "2026-09-05" },
+      deliveryDeadline: "2026-09-05T23:59:59.999Z",
     });
   });
 });

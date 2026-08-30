@@ -1,15 +1,10 @@
 /**
- * TIM's own demo-scope vocabulary (AGENT_SPEC.md §1). These two labels are
- * not known to the Commerce MCP server at all — it has a general, non
- * hardcoded category taxonomy (see category-resolution.ts) — they exist only
- * so TIM's Layer 1/2 pipeline has a fixed, small "which required-fields set
- * applies" switch (AGENT_SPEC.md §3).
+ * A canonical category id returned by the live Commerce catalog, such as
+ * `retail_goods.apparel.shoes` or `bookings.activities`. The Agent does not
+ * keep a hardcoded category enum: its available values come from the active
+ * categories that currently contain Merchant products.
  */
-export const DEMO_CATEGORIES = [
-  "electronics",
-  "professional_services",
-] as const;
-export type DemoCategory = (typeof DEMO_CATEGORIES)[number];
+export type AgentCategory = string;
 
 /**
  * Layer 1 output: a draft intent extracted from the raw message, before the
@@ -28,7 +23,7 @@ export interface DraftUserIntent {
    * result (confirmed against packages/commerce/src/catalog/search.ts).
    */
   productQuery: string;
-  categoryCandidates: DemoCategory[];
+  categoryCandidates: AgentCategory[];
   budgetMax?: number;
   currency: string;
   /** Canonical attribute names only ("size", "storage") — never a merchant CSV header. */
@@ -47,7 +42,7 @@ export type Mode =
   | { mode: "category_discovery" }
   | {
       mode: "attribute_discovery";
-      category: DemoCategory;
+      category: AgentCategory;
       missingFields: string[];
     }
   | { mode: "directed"; intent: ResolvedUserIntent };
@@ -62,7 +57,7 @@ declare const resolvedBrand: unique symbol;
  * intends.
  */
 export type ResolvedUserIntent = DraftUserIntent & {
-  category: DemoCategory;
+  category: AgentCategory;
   budgetMax: number;
   readonly [resolvedBrand]: true;
 };

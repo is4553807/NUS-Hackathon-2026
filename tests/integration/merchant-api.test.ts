@@ -260,6 +260,19 @@ const services = {
       active: true,
     },
   ]),
+  listPopulatedCategories: vi.fn(async () => [
+    {
+      categoryId: product.categoryId,
+      parentId: "retail_goods.apparel",
+      commerceDomain: "retail_goods" as const,
+      productKind: "physical_good" as const,
+      slug: "shoes",
+      name: "Shoes",
+      level: 2,
+      aliases: ["footwear"],
+      active: true,
+    },
+  ]),
   listImportProfiles: vi.fn(async () => []),
   listMerchants: vi.fn(async () => [merchant]),
   listMerchantProducts: vi.fn(async (requestedMerchantId: string) => {

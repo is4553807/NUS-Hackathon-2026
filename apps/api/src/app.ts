@@ -49,7 +49,9 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
   void app.register(healthRoutes);
   void app.register(usersRoutes, { prefix: "/v1/users" });
   void app.register(intentsRoutes, { prefix: "/v1/intents" });
-  void app.register(createAgentRoutes(commerceServices), { prefix: "/v1/agent" });
+  void app.register(createAgentRoutes(commerceServices), {
+    prefix: "/v1/agent",
+  });
   void app.register(createMerchantsRoutes(commerceServices), {
     prefix: "/v1/merchants",
   });

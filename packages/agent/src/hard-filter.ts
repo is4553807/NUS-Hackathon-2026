@@ -1,4 +1,8 @@
-import type { HardFilterResult, RealOffer, ResolvedUserIntent } from "./domain-types.js";
+import type {
+  HardFilterResult,
+  RealOffer,
+  ResolvedUserIntent,
+} from "./domain-types.js";
 
 function normalize(value: string | number | boolean): string {
   return String(value).trim().toLocaleLowerCase("en");
@@ -22,12 +26,20 @@ export function applyHardFilter(
 
   for (const offer of offers) {
     if (offer.status !== "active") {
-      rejections.push({ offerId: offer.offerId, reason: "UNAVAILABLE", detail: `Offer status is "${offer.status}".` });
+      rejections.push({
+        offerId: offer.offerId,
+        reason: "UNAVAILABLE",
+        detail: `Offer status is "${offer.status}".`,
+      });
       continue;
     }
 
     if (offer.quantityAvailable < intent.quantity || !offer.deliveryAvailable) {
-      rejections.push({ offerId: offer.offerId, reason: "UNAVAILABLE", detail: "Insufficient stock or no fulfillment option." });
+      rejections.push({
+        offerId: offer.offerId,
+        reason: "UNAVAILABLE",
+        detail: "Insufficient stock or no fulfillment option.",
+      });
       continue;
     }
 
@@ -43,7 +55,9 @@ export function applyHardFilter(
     const missingAttribute = Object.entries(intent.requiredAttributes).find(
       ([key, requiredValue]) => {
         const actual = offer.attributes[key];
-        return actual === undefined || normalize(actual) !== normalize(requiredValue);
+        return (
+          actual === undefined || normalize(actual) !== normalize(requiredValue)
+        );
       },
     );
     if (missingAttribute !== undefined) {

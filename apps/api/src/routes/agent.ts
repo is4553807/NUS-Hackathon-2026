@@ -21,7 +21,7 @@ import type { CommerceApiServices } from "../services.js";
 
 function toListCategories(services: CommerceApiServices): ListCategories {
   return async () => {
-    const categories = await services.listCategories();
+    const categories = await services.listPopulatedCategories();
     return categories.map((category) => ({
       categoryId: category.categoryId,
       commerceDomain: category.commerceDomain,
@@ -111,16 +111,14 @@ export function createAgentRoutes(
         (candidate) => candidate.offerId === selectedOfferId,
       );
       if (offer === undefined) {
-        return reply
-          .status(409)
-          .send({
-            events: [
-              {
-                type: "error",
-                message: "There is no confirmed recommendation to act on.",
-              },
-            ],
-          });
+        return reply.status(409).send({
+          events: [
+            {
+              type: "error",
+              message: "There is no confirmed recommendation to act on.",
+            },
+          ],
+        });
       }
 
       session.state = "confirmed";

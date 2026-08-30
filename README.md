@@ -2,12 +2,12 @@
 
 Conversational commerce prototype for the Visa x NUS Hackathon. The repository is a TypeScript monorepo that separates user-facing applications, transport adapters, shared contracts, and reusable domain packages so TIM and SANGYOON can develop in parallel.
 
-The repository foundation, shared transport validation, flexible Commerce catalog, Merchant/Catalog/Inventory/Pricing services, search, offers, orders, a safe mock Visa payment flow, an interactive Merchant catalog workspace, rule-based CSV import/export, and the Commerce MCP server are implemented. Public MCP deployment and consumer-agent behavior remain in later phases.
+The repository foundation, shared transport validation, flexible Commerce catalog, Merchant/Catalog/Inventory/Pricing services, search, offers, orders, a safe mock Visa payment flow, an interactive Merchant catalog workspace, rule-based CSV import/export, the Commerce MCP server, and the Web Chat consumer Agent are implemented. Public MCP deployment remains a deployment step; Telegram is intentionally deferred until after the Web Chat demo.
 
 ## Architecture
 
 ```text
-Consumer Web / Telegram             Merchant Form
+Consumer Web (Telegram later)       Merchant Form
             |                             |
             v                             v
  OpenAI Agent (TIM)                 HTTP REST API
@@ -114,6 +114,8 @@ Fill only the values required by the application you are starting. Never commit 
 
 `OPENAI_API_KEY` is required only by TIM's consumer Agent. Merchant forms, the REST API, the Commerce domain, the MCP server, and database scripts do not use it.
 
+For local Agent use, keep `COMMERCE_MCP_URL=http://127.0.0.1:4100/mcp`. For Cloudtype, deploy the MCP server as a public HTTPS service first, then set the API/Agent service's `COMMERCE_MCP_URL` to `https://<your-mcp-host>/mcp`. Set the same strong secret as `MCP_AUTH_TOKEN` on the MCP service and `COMMERCE_MCP_AUTH_TOKEN` on the API/Agent service. These variables are server-side only and must never use a `NEXT_PUBLIC_` prefix.
+
 ## Local development
 
 Run the main local applications:
@@ -133,7 +135,9 @@ pnpm dev:telegram
 
 The Telegram process requires `TELEGRAM_BOT_TOKEN`. Without it, the application exits with a clear configuration message.
 
-With PostgreSQL, the API, and the web app running, open [http://localhost:3000/merchant](http://localhost:3000/merchant). The workspace reads and manages merchants, products, variants, inventory, private pricing policies, and saved CSV mappings through the Commerce REST API. `Add product` generates product and variant fields from the selected category schema. `Import CSV` reads up to 2,000 rows, proposes deterministic mappings from known headers and category aliases, requires Merchant review for unresolved fields, validates the file, creates products and inventory, and saves the approved mapping. `Export CSV` downloads the Merchant's current variant-level catalog and inventory with canonical headers. Product actions support core edits, private pricing, and reversible pause/resume; inventory rows support stable-ID variant, price, attribute, and stock edits. Use the merchant switcher in the top-right corner to inspect all six sample merchants; `Orchard Tech` is the default because it demonstrates the smartphone schema and reusable CSV mapping flow.
+The submission surface is the Web Chat at [http://localhost:3000/chat](http://localhost:3000/chat). Telegram is a later adapter over the same API and Agent session flow, not a prerequisite for the Web demo.
+
+With PostgreSQL, the API, and the web app running, open [http://localhost:3000/merchant](http://localhost:3000/merchant). The workspace reads and manages merchants, products, variants, inventory, private pricing policies, and saved CSV mappings through the Commerce REST API. `Add product` generates product and variant fields from the selected category schema. `Import CSV` reads up to 2,000 rows, proposes deterministic mappings from known headers and category aliases, requires Merchant review for unresolved fields, validates the file, creates products and inventory, and saves the approved mapping. `Export CSV` downloads the Merchant's current variant-level catalog and inventory with canonical headers. Product actions support core edits, private pricing, and reversible pause/resume; inventory rows support stable-ID variant, price, attribute, and stock edits. Use the merchant switcher in the top-right corner to inspect all 15 sample merchants; `Orchard Tech` is the default because it demonstrates the smartphone schema and reusable CSV mapping flow.
 
 With PostgreSQL and the MCP server running, its health check is available at [http://127.0.0.1:4100/health](http://127.0.0.1:4100/health). The `/mcp` route is a machine endpoint for MCP clients, not a browser page. `pnpm dev:mcp` automatically reads the repository `.env`; use `pnpm --filter @visa-commerce/mcp-server dev:stdio` when a local MCP client requires `stdio`.
 
@@ -159,7 +163,9 @@ pnpm db:studio
 
 `pnpm db:generate` does not require a live database. Migrations, seed data, Studio, and runtime database access require a valid `DATABASE_URL`.
 
-`pnpm db:seed` is idempotent. It creates or updates 21 category nodes, seven category schemas, six merchants, six products, eleven variants, inventory, pricing policies, one example CSV mapping profile, and four saved mock Visa payment methods without deleting unrelated local data. The sample catalog includes both shoes and an iPhone, proving that physical goods do not share shoe-specific fields.
+`pnpm db:seed` is idempotent. It creates or updates 25 category nodes, 11 category schemas, 15 merchants, 27 products, 32 variants, inventory, pricing policies, one example CSV mapping profile, and four saved mock Visa payment methods without deleting unrelated local data. The sample catalog includes shoes, smartphones, electronics, digital products, professional services, meals, SaaS, and an activity booking, proving that one rigid physical-goods schema is not required.
+
+The consumer Agent does not maintain its own fixed category enum. On each turn it receives the live set of active Merchant categories that currently contain active products, and uses their canonical category IDs across intent extraction, discovery, MCP search, offer comparison, and booking/service/retail handling. Adding an active product to a supported category therefore makes that category available to the Agent without adding another hardcoded decision branch.
 
 ## Flexible catalog model
 

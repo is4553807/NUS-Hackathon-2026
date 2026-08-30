@@ -405,11 +405,17 @@ const categorySchemas: Prisma.CategorySchemaCreateManyInput[] = [
     version: "1.0",
     attributeSchema: {
       attributes: {
-        productType: field("string", "product", { required: true, filterable: true }),
+        productType: field("string", "product", {
+          required: true,
+          filterable: true,
+        }),
         useCase: field("string", "product", { filterable: true }),
         gpu: field("string", "variant", { filterable: true, comparable: true }),
         ramGb: field("number", "variant", { comparable: true }),
-        storageGb: field("number", "variant", { comparable: true, aliases: ["storage"] }),
+        storageGb: field("number", "variant", {
+          comparable: true,
+          aliases: ["storage"],
+        }),
       },
     },
   },
@@ -419,10 +425,16 @@ const categorySchemas: Prisma.CategorySchemaCreateManyInput[] = [
     version: "1.0",
     attributeSchema: {
       attributes: {
-        productType: field("string", "product", { required: true, filterable: true }),
+        productType: field("string", "product", {
+          required: true,
+          filterable: true,
+        }),
         noiseCancelling: field("boolean", "product", { filterable: true }),
         batteryLifeHours: field("number", "variant", { comparable: true }),
-        color: field("string", "variant", { filterable: true, aliases: ["colour"] }),
+        color: field("string", "variant", {
+          filterable: true,
+          aliases: ["colour"],
+        }),
       },
     },
   },
@@ -432,9 +444,15 @@ const categorySchemas: Prisma.CategorySchemaCreateManyInput[] = [
     version: "1.0",
     attributeSchema: {
       attributes: {
-        productType: field("string", "product", { required: true, filterable: true }),
+        productType: field("string", "product", {
+          required: true,
+          filterable: true,
+        }),
         wattage: field("number", "variant", { comparable: true }),
-        color: field("string", "variant", { filterable: true, aliases: ["colour"] }),
+        color: field("string", "variant", {
+          filterable: true,
+          aliases: ["colour"],
+        }),
       },
     },
   },
@@ -444,9 +462,15 @@ const categorySchemas: Prisma.CategorySchemaCreateManyInput[] = [
     version: "1.0",
     attributeSchema: {
       attributes: {
-        productType: field("string", "product", { required: true, filterable: true }),
+        productType: field("string", "product", {
+          required: true,
+          filterable: true,
+        }),
         compatibility: field("string", "product", { filterable: true }),
-        color: field("string", "variant", { filterable: true, aliases: ["colour"] }),
+        color: field("string", "variant", {
+          filterable: true,
+          aliases: ["colour"],
+        }),
       },
     },
   },
@@ -679,7 +703,8 @@ const merchants: Prisma.MerchantCreateManyInput[] = [
     id: merchantIds.nusGadgetHub,
     name: "NUS Gadget Hub",
     category: categoryIds.electronics,
-    description: "One-stop electronics retailer: home appliances, mobile electronics, laptops, and accessories.",
+    description:
+      "One-stop electronics retailer: home appliances, mobile electronics, laptops, and accessories.",
     currency: "SGD",
     contactEmail: "sales@nusgadgethub.example.com",
     status: MerchantStatus.ACTIVE,
@@ -733,7 +758,8 @@ const merchants: Prisma.MerchantCreateManyInput[] = [
     id: merchantIds.careerLaunchCollective,
     name: "Career Launch Collective",
     category: categoryIds.professionalServices,
-    description: "Full-service career development: coaching, resumes, LinkedIn, interview prep.",
+    description:
+      "Full-service career development: coaching, resumes, LinkedIn, interview prep.",
     currency: "SGD",
     contactEmail: "hello@careerlaunch.example.com",
     status: MerchantStatus.ACTIVE,
@@ -751,7 +777,8 @@ const merchants: Prisma.MerchantCreateManyInput[] = [
     id: merchantIds.adminAndBeyond,
     name: "Admin & Beyond Services",
     category: categoryIds.professionalServices,
-    description: "Business admin support: payroll, tax filing, notarization, and bookkeeping add-ons.",
+    description:
+      "Business admin support: payroll, tax filing, notarization, and bookkeeping add-ons.",
     currency: "SGD",
     contactEmail: "hello@adminandbeyond.example.com",
     status: MerchantStatus.ACTIVE,
@@ -911,7 +938,8 @@ const products: Prisma.ProductCreateManyInput[] = [
     billingModel: BillingModel.ONE_TIME,
     availabilityModel: AvailabilityModel.STOCK,
     name: "PulseBuds Air",
-    description: "Wireless earbuds with active noise cancellation and a 24-hour battery case.",
+    description:
+      "Wireless earbuds with active noise cancellation and a 24-hour battery case.",
     brand: "PulseAudio",
     basePrice: 129,
     currency: "SGD",
@@ -928,7 +956,8 @@ const products: Prisma.ProductCreateManyInput[] = [
     billingModel: BillingModel.ONE_TIME,
     availabilityModel: AvailabilityModel.STOCK,
     name: "Gadget Hub Ultrabook 14",
-    description: "14-inch everyday laptop for browsing, study, and office work.",
+    description:
+      "14-inch everyday laptop for browsing, study, and office work.",
     brand: "Gadget Hub",
     basePrice: 899,
     currency: "SGD",
@@ -945,7 +974,8 @@ const products: Prisma.ProductCreateManyInput[] = [
     billingModel: BillingModel.ONE_TIME,
     availabilityModel: AvailabilityModel.STOCK,
     name: "FastCharge Power Bank 20000mAh",
-    description: "High-capacity portable charger with fast-charging USB-C output.",
+    description:
+      "High-capacity portable charger with fast-charging USB-C output.",
     brand: "FastCharge",
     basePrice: 45,
     currency: "SGD",
@@ -962,7 +992,8 @@ const products: Prisma.ProductCreateManyInput[] = [
     billingModel: BillingModel.ONE_TIME,
     availabilityModel: AvailabilityModel.STOCK,
     name: "Byte Pro 15",
-    description: "15-inch laptop with discrete graphics for light video editing and gaming.",
+    description:
+      "15-inch laptop with discrete graphics for light video editing and gaming.",
     brand: "Byte",
     basePrice: 1799,
     currency: "SGD",
@@ -979,12 +1010,17 @@ const products: Prisma.ProductCreateManyInput[] = [
     billingModel: BillingModel.ONE_TIME,
     availabilityModel: AvailabilityModel.STOCK,
     name: "Byte Phone X",
-    description: "Android smartphone with a clean feature set at a mid-range price.",
+    description:
+      "Android smartphone with a clean feature set at a mid-range price.",
     brand: "Byte",
     basePrice: 699,
     currency: "SGD",
     imageUrl: null,
-    attributes: { productType: "smartphone", model: "Byte Phone X", operatingSystem: "Android" },
+    attributes: {
+      productType: "smartphone",
+      model: "Byte Phone X",
+      operatingSystem: "Android",
+    },
     active: true,
   },
   {
@@ -1052,7 +1088,10 @@ const products: Prisma.ProductCreateManyInput[] = [
     basePrice: 22,
     currency: "SGD",
     imageUrl: null,
-    attributes: { productType: "laptop_sleeve", compatibility: "14-inch laptops" },
+    attributes: {
+      productType: "laptop_sleeve",
+      compatibility: "14-inch laptops",
+    },
     active: true,
   },
   {
@@ -1081,7 +1120,8 @@ const products: Prisma.ProductCreateManyInput[] = [
     billingModel: BillingModel.ONE_TIME,
     availabilityModel: AvailabilityModel.STOCK,
     name: "StudioPro X",
-    description: "16-inch workstation laptop built for video editing and 3D work.",
+    description:
+      "16-inch workstation laptop built for video editing and 3D work.",
     brand: "Forge",
     basePrice: 2199,
     currency: "SGD",
@@ -1102,7 +1142,8 @@ const products: Prisma.ProductCreateManyInput[] = [
     // (spec, price) so the two form a genuine tie — the agent's tiebreak
     // path needs two offers that don't differ on anything that matters,
     // which the other, deliberately-distinct laptops never produce.
-    description: "16-inch workstation laptop built for video editing and 3D rendering.",
+    description:
+      "16-inch workstation laptop built for video editing and 3D rendering.",
     brand: "Pixelworks",
     basePrice: 2199,
     currency: "SGD",
@@ -1119,7 +1160,8 @@ const products: Prisma.ProductCreateManyInput[] = [
     billingModel: BillingModel.ONE_TIME,
     availabilityModel: AvailabilityModel.TIME_SLOT,
     name: "Resume Writing & Optimization",
-    description: "Professionally rewritten resume tailored to your target role.",
+    description:
+      "Professionally rewritten resume tailored to your target role.",
     brand: "Career Launch Collective",
     basePrice: 50,
     currency: "SGD",
@@ -1136,7 +1178,8 @@ const products: Prisma.ProductCreateManyInput[] = [
     billingModel: BillingModel.ONE_TIME,
     availabilityModel: AvailabilityModel.TIME_SLOT,
     name: "LinkedIn Profile Makeover",
-    description: "Full rewrite and optimization of your LinkedIn profile for recruiter visibility.",
+    description:
+      "Full rewrite and optimization of your LinkedIn profile for recruiter visibility.",
     brand: "Career Launch Collective",
     basePrice: 60,
     currency: "SGD",
@@ -1187,7 +1230,8 @@ const products: Prisma.ProductCreateManyInput[] = [
     billingModel: BillingModel.ONE_TIME,
     availabilityModel: AvailabilityModel.TIME_SLOT,
     name: "Monthly Bookkeeping Package",
-    description: "Recurring transaction categorization and reconciliation for a small business.",
+    description:
+      "Recurring transaction categorization and reconciliation for a small business.",
     brand: "Ledgerline Partners",
     basePrice: 75,
     currency: "SGD",
@@ -1885,9 +1929,21 @@ const inventoryQuantities: Array<readonly [string, string, number]> = [
   ["c7777777-7777-4777-8777-777777777771", merchantIds.campusComputeCo, 10],
   ["c8888888-8888-4888-8888-888888888881", merchantIds.studioHardwareSg, 6],
   ["caaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", merchantIds.pixelWorksLabs, 6],
-  ["ee111111-1111-4111-8111-111111111111", merchantIds.careerLaunchCollective, 20],
-  ["ee222222-2222-4222-8222-222222222222", merchantIds.careerLaunchCollective, 20],
-  ["ee333333-3333-4333-8333-333333333333", merchantIds.careerLaunchCollective, 20],
+  [
+    "ee111111-1111-4111-8111-111111111111",
+    merchantIds.careerLaunchCollective,
+    20,
+  ],
+  [
+    "ee222222-2222-4222-8222-222222222222",
+    merchantIds.careerLaunchCollective,
+    20,
+  ],
+  [
+    "ee333333-3333-4333-8333-333333333333",
+    merchantIds.careerLaunchCollective,
+    20,
+  ],
   ["ee444444-4444-4444-8444-444444444444", merchantIds.careerStudio, 15],
   ["c9999999-9999-4999-8999-999999999991", merchantIds.ledgerlinePartners, 20],
   ["ff111111-1111-4111-8111-111111111111", merchantIds.adminAndBeyond, 20],

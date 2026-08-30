@@ -2,7 +2,7 @@ import { zodTextFormat } from "openai/helpers/zod.js";
 import { z } from "zod";
 
 import { agentConfig } from "../config.js";
-import type { DemoCategory, DraftUserIntent } from "../domain-types.js";
+import type { AgentCategory, DraftUserIntent } from "../domain-types.js";
 import { getOpenAiClient } from "../openai-client.js";
 
 const QuestionOutputSchema = z.object({ question: z.string() });
@@ -17,7 +17,7 @@ Never phrase it as a fact about what's available. Keep it to one short, plain-la
 No "please", no exclamation marks, sentence case.`;
 
 export interface AttributeDiscoveryInput {
-  category: DemoCategory;
+  category: AgentCategory;
   missingFields: string[];
   draft: DraftUserIntent;
 }
@@ -38,10 +38,13 @@ export async function askAttributeDiscoveryQuestion(
           `Missing required fields: ${input.missingFields.join(", ")}`,
       },
     ],
-    text: { format: zodTextFormat(QuestionOutputSchema, "clarifying_question") },
+    text: {
+      format: zodTextFormat(QuestionOutputSchema, "clarifying_question"),
+    },
   });
 
   const parsed = response.output_parsed;
-  if (parsed === null) throw new Error("Mode 2a question generation returned no output.");
+  if (parsed === null)
+    throw new Error("Mode 2a question generation returned no output.");
   return parsed.question;
 }

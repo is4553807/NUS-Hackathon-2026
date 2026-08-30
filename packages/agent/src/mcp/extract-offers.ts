@@ -1,4 +1,7 @@
-import type { Response, ResponseOutputItem } from "openai/resources/responses/responses.js";
+import type {
+  Response,
+  ResponseOutputItem,
+} from "openai/resources/responses/responses.js";
 
 import type { RealOffer } from "../domain-types.js";
 
@@ -19,7 +22,9 @@ function protocolErrorMessage(item: ResponseOutputItem.McpCall): string | null {
   const error = item.error;
   if (error === null || error === undefined) return null;
   if (error.type === "mcp_tool_execution_error") {
-    return typeof error.content === "string" ? error.content : JSON.stringify(error.content);
+    return typeof error.content === "string"
+      ? error.content
+      : JSON.stringify(error.content);
   }
   return error.message;
 }
@@ -30,9 +35,15 @@ function protocolErrorMessage(item: ResponseOutputItem.McpCall): string | null {
  * whatever the model said about it in its final text. Never trust a
  * model-reported offer — only what the tool itself actually returned.
  */
-export function findToolCalls(response: Response, toolName: string): ExtractedToolCall[] {
-  return response.output.filter(isMcpCall)
-    .filter((item) => item.name === toolName && item.server_label === "visa_commerce")
+export function findToolCalls(
+  response: Response,
+  toolName: string,
+): ExtractedToolCall[] {
+  return response.output
+    .filter(isMcpCall)
+    .filter(
+      (item) => item.name === toolName && item.server_label === "visa_commerce",
+    )
     .map((item) => ({
       toolName: item.name,
       argumentsJson: item.arguments,
@@ -72,20 +83,41 @@ export interface ToolJsonOutcome<T> {
  * always shapes a failure as `{ success: false, error: { code, message } }`,
  * so this is the one place that recognizes it.
  */
-export function extractToolJsonResult<T>(response: Response, toolName: string): ToolJsonOutcome<T> {
+export function extractToolJsonResult<T>(
+  response: Response,
+  toolName: string,
+): ToolJsonOutcome<T> {
   const calls = findToolCalls(response, toolName);
   const lastCall = calls.at(-1);
 
   if (lastCall === undefined) {
-    return { data: null, wasCalled: false, errorCode: null, toolErrorMessage: null, retryable: false };
+    return {
+      data: null,
+      wasCalled: false,
+      errorCode: null,
+      toolErrorMessage: null,
+      retryable: false,
+    };
   }
 
   if (lastCall.errorMessage !== null) {
-    return { data: null, wasCalled: true, errorCode: "INTERNAL_ERROR", toolErrorMessage: lastCall.errorMessage, retryable: true };
+    return {
+      data: null,
+      wasCalled: true,
+      errorCode: "INTERNAL_ERROR",
+      toolErrorMessage: lastCall.errorMessage,
+      retryable: true,
+    };
   }
 
   if (lastCall.outputJson === null) {
-    return { data: null, wasCalled: true, errorCode: "INTERNAL_ERROR", toolErrorMessage: `${toolName} returned no output.`, retryable: true };
+    return {
+      data: null,
+      wasCalled: true,
+      errorCode: "INTERNAL_ERROR",
+      toolErrorMessage: `${toolName} returned no output.`,
+      retryable: true,
+    };
   }
 
   try {
@@ -101,9 +133,21 @@ export function extractToolJsonResult<T>(response: Response, toolName: string): 
       };
     }
 
-    return { data: parsed as T, wasCalled: true, errorCode: null, toolErrorMessage: null, retryable: false };
+    return {
+      data: parsed as T,
+      wasCalled: true,
+      errorCode: null,
+      toolErrorMessage: null,
+      retryable: false,
+    };
   } catch {
-    return { data: null, wasCalled: true, errorCode: "INTERNAL_ERROR", toolErrorMessage: `${toolName} output was not valid JSON.`, retryable: true };
+    return {
+      data: null,
+      wasCalled: true,
+      errorCode: "INTERNAL_ERROR",
+      toolErrorMessage: `${toolName} output was not valid JSON.`,
+      retryable: true,
+    };
   }
 }
 
@@ -113,8 +157,13 @@ export interface RequestOffersOutcome {
   toolErrorMessage: string | null;
 }
 
-export function extractRequestOffersResult(response: Response): RequestOffersOutcome {
-  const outcome = extractToolJsonResult<{ offers: RealOffer[] }>(response, "request_offers");
+export function extractRequestOffersResult(
+  response: Response,
+): RequestOffersOutcome {
+  const outcome = extractToolJsonResult<{ offers: RealOffer[] }>(
+    response,
+    "request_offers",
+  );
   return {
     offers: outcome.data?.offers ?? [],
     wasCalled: outcome.wasCalled,

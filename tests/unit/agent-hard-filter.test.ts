@@ -1,9 +1,15 @@
 import { describe, expect, it } from "vitest";
 
-import type { Response, ResponseOutputItem } from "openai/resources/responses/responses.js";
+import type {
+  Response,
+  ResponseOutputItem,
+} from "openai/resources/responses/responses.js";
 
 import { applyHardFilter } from "../../packages/agent/src/hard-filter.js";
-import type { RealOffer, ResolvedUserIntent } from "../../packages/agent/src/domain-types.js";
+import type {
+  RealOffer,
+  ResolvedUserIntent,
+} from "../../packages/agent/src/domain-types.js";
 import { extractRequestOffersResult } from "../../packages/agent/src/mcp/extract-offers.js";
 
 function makeOffer(overrides: Partial<RealOffer> = {}): RealOffer {
@@ -32,7 +38,9 @@ function makeOffer(overrides: Partial<RealOffer> = {}): RealOffer {
   };
 }
 
-function makeIntent(overrides: Partial<ResolvedUserIntent> = {}): ResolvedUserIntent {
+function makeIntent(
+  overrides: Partial<ResolvedUserIntent> = {},
+): ResolvedUserIntent {
   return {
     rawQuery: "phone",
     categoryCandidates: ["electronics"],
@@ -48,20 +56,35 @@ function makeIntent(overrides: Partial<ResolvedUserIntent> = {}): ResolvedUserIn
 describe("applyHardFilter", () => {
   it("rejects an over-budget offer deterministically, regardless of any model claim", () => {
     const intent = makeIntent({ budgetMax: 150 });
-    const overBudgetOffer = makeOffer({ offerId: "over-budget", offeredPrice: 999 });
-    const withinBudgetOffer = makeOffer({ offerId: "within-budget", offeredPrice: 100 });
+    const overBudgetOffer = makeOffer({
+      offerId: "over-budget",
+      offeredPrice: 999,
+    });
+    const withinBudgetOffer = makeOffer({
+      offerId: "within-budget",
+      offeredPrice: 100,
+    });
 
-    const { survivors, rejections } = applyHardFilter([overBudgetOffer, withinBudgetOffer], intent);
+    const { survivors, rejections } = applyHardFilter(
+      [overBudgetOffer, withinBudgetOffer],
+      intent,
+    );
 
     expect(survivors.map((o) => o.offerId)).toEqual(["within-budget"]);
     expect(rejections).toContainEqual(
-      expect.objectContaining({ offerId: "over-budget", reason: "OVER_BUDGET" }),
+      expect.objectContaining({
+        offerId: "over-budget",
+        reason: "OVER_BUDGET",
+      }),
     );
   });
 
   it("rejects an offer missing a required attribute", () => {
     const intent = makeIntent({ requiredAttributes: { storage: "256GB" } });
-    const offer = makeOffer({ attributes: { storage: "128GB" }, offeredPrice: 100 });
+    const offer = makeOffer({
+      attributes: { storage: "128GB" },
+      offeredPrice: 100,
+    });
     const { survivors, rejections } = applyHardFilter([offer], intent);
     expect(survivors).toHaveLength(0);
     expect(rejections[0]?.reason).toBe("MISSING_REQUIRED_FEATURE");

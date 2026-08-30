@@ -1,21 +1,4 @@
-import type { DemoCategory } from "./domain-types.js";
-
-/**
- * The Commerce MCP server has no concept of TIM's two demo categories at
- * all — it has a general, real, non-hardcoded category taxonomy (CLAUDE.md
- * rule 8; confirmed against packages/commerce/src/categories/index.ts and
- * the live seed data). Per explicit product direction: "electronics" maps
- * onto the `retail_goods` commerceDomain and "professional_services" maps
- * onto the `services_subscriptions` commerceDomain — they are the same
- * thing under TIM's demo-scope label.
- */
-const DOMAIN_BY_DEMO_CATEGORY: Record<
-  DemoCategory,
-  "retail_goods" | "services_subscriptions"
-> = {
-  electronics: "retail_goods",
-  professional_services: "services_subscriptions",
-};
+import type { AgentCategory } from "./domain-types.js";
 
 export interface CatalogCategory {
   categoryId: string;
@@ -49,59 +32,45 @@ function categoryMatchesQuery(
 }
 
 export interface ResolvedCategory {
-  commerceDomain: "retail_goods" | "services_subscriptions";
-  /**
-   * null when no specific subcategory's name/slug/aliases matched the
-   * query text (e.g. a brand name like "iPhone" that names a product, not
-   * a category) — request_offers/search_products treat a null categoryId
-   * as "search the whole domain" (packages/commerce/src/catalog/search.ts),
-   * which is more correct here than guessing wrong, and keeps this
-   * generic rather than a hardcoded product→category map (CLAUDE.md rule 8).
-   */
+  commerceDomain: CatalogCategory["commerceDomain"];
+  /** Exact canonical category selected from the live Merchant catalog. */
   categoryId: string | null;
-  /** Canonical, category-level fallback used only after a specific search
-   * returns zero results. Keeping it separate means broadening never changes
-   * the user's hard constraints. */
+  /** Canonical fallback used only after a literal product query returns no
+   * results. It preserves every hard constraint while searching by the real
+   * category name instead. */
   broadCategoryId: string | null;
   broadQuery: string;
 }
 
 export async function resolveCategory(
-  demoCategory: DemoCategory,
+  agentCategory: AgentCategory,
   query: string,
   listCategories: ListCategories,
 ): Promise<ResolvedCategory> {
-  const commerceDomain = DOMAIN_BY_DEMO_CATEGORY[demoCategory];
   const categories = await listCategories();
-  const inDomain = categories.filter(
-    (c) => c.commerceDomain === commerceDomain,
+  const normalizedCategory = normalize(agentCategory);
+  const explicitlySelected = categories.find(
+    (category) =>
+      category.categoryId === agentCategory ||
+      [category.name, category.slug, ...category.aliases].some(
+        (candidate) => normalize(candidate) === normalizedCategory,
+      ),
   );
 
   const tokens = normalize(query).split(" ").filter(Boolean);
-  const matches = inDomain
+  const matches = categories
     .filter((category) => categoryMatchesQuery(category, tokens))
     .sort((a, b) => b.level - a.level);
 
-  const best = matches[0];
-  const demoCategoryName = normalize(demoCategory);
-  const broadCategory =
-    inDomain.find(
-      (category) => normalize(category.name) === demoCategoryName,
-    ) ??
-    inDomain.find(
-      (category) => normalize(category.slug) === demoCategoryName,
-    ) ??
-    best ??
-    inDomain.sort((a, b) => a.level - b.level)[0];
+  const best = explicitlySelected ?? matches[0];
+  if (best === undefined) {
+    throw new Error(`The category "${agentCategory}" is not available.`);
+  }
 
   return {
-    commerceDomain,
-    categoryId: best?.categoryId ?? null,
-    broadCategoryId: broadCategory?.categoryId ?? null,
-    broadQuery:
-      broadCategory?.name ??
-      (demoCategory === "electronics"
-        ? "Electronics"
-        : "Professional Services"),
+    commerceDomain: best.commerceDomain,
+    categoryId: best.categoryId,
+    broadCategoryId: best.categoryId,
+    broadQuery: best.name,
   };
 }

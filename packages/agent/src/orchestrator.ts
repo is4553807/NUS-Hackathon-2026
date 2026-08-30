@@ -2,9 +2,9 @@ import type { GetCategorySchema } from "./attribute-validation.js";
 import type { ListCategories } from "./category-resolution.js";
 import {
   emptyDraftIntent,
+  type AgentCategory,
   type ChatSession,
   type ComparisonResult,
-  type DemoCategory,
   type RealOffer,
 } from "./domain-types.js";
 import { applyHardFilter } from "./hard-filter.js";
@@ -83,7 +83,7 @@ function buildIntentChips(session: ChatSession): IntentChip[] {
 }
 
 async function runComparisonForOffers(
-  category: DemoCategory,
+  category: AgentCategory,
   userQuery: string,
   offers: RealOffer[],
 ): Promise<{ events: AgentTurnEvent[]; comparison: ComparisonResult | null }> {
@@ -160,7 +160,7 @@ async function runComparisonForOffers(
   }
 
   return {
-    events: [...toComparisonEvents(category, offers, decision)],
+    events: [...toComparisonEvents(offers, decision)],
     comparison: decision,
   };
 }
@@ -173,7 +173,10 @@ export async function recommendAlternativeAfterUnavailable(
     (offer) => offer.offerId !== unavailableOfferId,
   );
   session.lastOffers = remaining;
-  const category = session.draftIntent.categoryCandidates[0] ?? "electronics";
+  const category =
+    session.draftIntent.categoryCandidates[0] ??
+    session.lastOffers?.[0]?.categoryId ??
+    "catalog";
   const { events, comparison } = await runComparisonForOffers(
     category,
     session.draftIntent.rawQuery,
@@ -290,7 +293,6 @@ export function resolveStructuralTieByMerchantName(
 }
 
 function toComparisonEvents(
-  category: DemoCategory,
   offers: RealOffer[],
   decision: ComparisonResult,
 ): AgentTurnEvent[] {
@@ -533,12 +535,8 @@ export async function handleMessage(
   const slashResult = handleSlashCommand(session, message);
   if (slashResult.handled) {
     if ("comparison" in slashResult && slashResult.comparison !== undefined) {
-      const category =
-        session.draftIntent.categoryCandidates[0] ?? "electronics";
       const offers = session.lastOffers ?? [];
-      return respond(
-        toComparisonEvents(category, offers, slashResult.comparison),
-      );
+      return respond(toComparisonEvents(offers, slashResult.comparison));
     }
     return respond([
       {
@@ -556,7 +554,10 @@ export async function handleMessage(
     session.lastOffers !== undefined
   ) {
     session.conversationHistory.push({ role: "user", content: message });
-    const category = session.draftIntent.categoryCandidates[0] ?? "electronics";
+    const category =
+      session.draftIntent.categoryCandidates[0] ??
+      session.lastOffers[0]?.categoryId ??
+      "catalog";
     const structuralTie = findStructuralTie(session.lastOffers);
     if (structuralTie !== null) {
       const resolution = resolveStructuralTieByMerchantName(
@@ -573,7 +574,7 @@ export async function handleMessage(
       session.lastComparison = resolution.decision;
       session.state = "recommendation_ready";
       return respond(
-        toComparisonEvents(category, session.lastOffers, resolution.decision),
+        toComparisonEvents(session.lastOffers, resolution.decision),
       );
     }
 
@@ -602,16 +603,18 @@ export async function handleMessage(
     });
     session.lastComparison = decision;
     session.state = "recommendation_ready";
-    return respond(toComparisonEvents(category, session.lastOffers, decision));
+    return respond(toComparisonEvents(session.lastOffers, decision));
   }
 
   const extractIntent = deps.extractIntent ?? defaultExtractIntent;
   let extraction: ExtractIntentResult;
   try {
+    const availableCategories = await deps.listCategories();
     extraction = await extractIntent({
       message,
       currentDraft: session.draftIntent,
       conversationHistory: session.conversationHistory,
+      availableCategories,
     });
   } catch (error) {
     console.error("Layer 1 extraction failed.", error);

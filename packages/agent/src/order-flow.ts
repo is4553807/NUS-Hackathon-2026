@@ -19,14 +19,24 @@ export interface OrderResultData {
 export interface PaymentResultData {
   paymentId: string;
   orderId: string;
-  status: "pending" | "requires_verification" | "authorized" | "declined" | "failed" | "cancelled";
+  status:
+    | "pending"
+    | "requires_verification"
+    | "authorized"
+    | "declined"
+    | "failed"
+    | "cancelled";
   authorizationReference: string | null;
   failureMessage: string | null;
 }
 
 export type OrderOutcome =
   | { kind: "created"; requestId: string; order: OrderResultData }
-  | { kind: "needs_fresh_offer"; reason: "OFFER_EXPIRED" | "PRICE_CHANGED"; message: string }
+  | {
+      kind: "needs_fresh_offer";
+      reason: "OFFER_EXPIRED" | "PRICE_CHANGED";
+      message: string;
+    }
   | { kind: "unavailable"; message: string }
   | { kind: "error"; code: ErrorCode; message: string; retryable: boolean };
 
@@ -42,7 +52,11 @@ Do not modify any field. Do not call any other tool.`;
 const PAYMENT_SYSTEM_PROMPT = `Call initiate_payment exactly once, passing the given JSON object verbatim as its arguments. \
 Do not modify any field. Never include a PAN, CVV, PIN, or any raw card data — the payload already carries only a safe paymentMethodId or nothing at all. Do not call any other tool.`;
 
-function classifyOrderError(errorCode: ErrorCode | null, message: string, retryable: boolean): OrderOutcome {
+function classifyOrderError(
+  errorCode: ErrorCode | null,
+  message: string,
+  retryable: boolean,
+): OrderOutcome {
   switch (errorCode) {
     case "OFFER_EXPIRED":
     case "PRICE_CHANGED":
@@ -51,7 +65,12 @@ function classifyOrderError(errorCode: ErrorCode | null, message: string, retrya
     case "DELIVERY_UNAVAILABLE":
       return { kind: "unavailable", message };
     case null:
-      return { kind: "error", code: "INTERNAL_ERROR", message, retryable: true };
+      return {
+        kind: "error",
+        code: "INTERNAL_ERROR",
+        message,
+        retryable: true,
+      };
     default:
       return { kind: "error", code: errorCode, message, retryable };
   }
@@ -74,7 +93,9 @@ export async function submitOrder(
   requestIdStore: RequestIdStore,
   sessionId: string,
 ): Promise<OrderOutcome> {
-  const requestId = requestIdStore.getOrCreate(orderRequestKey(sessionId, offer.offerId));
+  const requestId = requestIdStore.getOrCreate(
+    orderRequestKey(sessionId, offer.offerId),
+  );
   const orderRequest = {
     requestId,
     userId: DEMO_USER_ID,
@@ -92,7 +113,10 @@ export async function submitOrder(
     forceToolName: "create_order",
   });
 
-  const outcome = extractToolJsonResult<OrderResultData>(response, "create_order");
+  const outcome = extractToolJsonResult<OrderResultData>(
+    response,
+    "create_order",
+  );
 
   if (outcome.data !== null) {
     // Idempotency: a successful call clears the stored id so a later,
@@ -103,14 +127,27 @@ export async function submitOrder(
   }
 
   if (!outcome.wasCalled) {
-    return { kind: "error", code: "INTERNAL_ERROR", message: "The model did not call create_order.", retryable: true };
+    return {
+      kind: "error",
+      code: "INTERNAL_ERROR",
+      message: "The model did not call create_order.",
+      retryable: true,
+    };
   }
 
-  return classifyOrderError(outcome.errorCode as ErrorCode | null, outcome.toolErrorMessage ?? "create_order failed.", outcome.retryable);
+  return classifyOrderError(
+    outcome.errorCode as ErrorCode | null,
+    outcome.toolErrorMessage ?? "create_order failed.",
+    outcome.retryable,
+  );
 }
 
 /** AGENT_SPEC.md §8: PAYMENT_FAILED is retried only if the response explicitly marks it retryable — the server's own flag, never guessed here. */
-function classifyPaymentError(errorCode: ErrorCode | null, message: string, retryable: boolean): PaymentOutcome {
+function classifyPaymentError(
+  errorCode: ErrorCode | null,
+  message: string,
+  retryable: boolean,
+): PaymentOutcome {
   if (errorCode === null) {
     return { kind: "error", code: "INTERNAL_ERROR", message, retryable: true };
   }
@@ -123,7 +160,9 @@ export async function submitPayment(
   sessionId: string,
   paymentMethodId?: string,
 ): Promise<PaymentOutcome> {
-  const requestId = requestIdStore.getOrCreate(paymentRequestKey(sessionId, orderId));
+  const requestId = requestIdStore.getOrCreate(
+    paymentRequestKey(sessionId, orderId),
+  );
   const paymentRequest = {
     requestId,
     orderId,
@@ -139,7 +178,10 @@ export async function submitPayment(
     forceToolName: "initiate_payment",
   });
 
-  const outcome = extractToolJsonResult<PaymentResultData>(response, "initiate_payment");
+  const outcome = extractToolJsonResult<PaymentResultData>(
+    response,
+    "initiate_payment",
+  );
 
   if (outcome.data !== null) {
     const payment = outcome.data;
@@ -156,25 +198,42 @@ export async function submitPayment(
   }
 
   if (!outcome.wasCalled) {
-    return { kind: "error", code: "INTERNAL_ERROR", message: "The model did not call initiate_payment.", retryable: true };
+    return {
+      kind: "error",
+      code: "INTERNAL_ERROR",
+      message: "The model did not call initiate_payment.",
+      retryable: true,
+    };
   }
 
-  return classifyPaymentError(outcome.errorCode as ErrorCode | null, outcome.toolErrorMessage ?? "initiate_payment failed.", outcome.retryable);
+  return classifyPaymentError(
+    outcome.errorCode as ErrorCode | null,
+    outcome.toolErrorMessage ?? "initiate_payment failed.",
+    outcome.retryable,
+  );
 }
 
 /** AGENT_SPEC.md §2/§10: "processing" (pending/requires_verification) must be polled, never assumed. */
-export async function pollPaymentStatus(paymentId: string): Promise<PaymentResultData> {
+export async function pollPaymentStatus(
+  paymentId: string,
+): Promise<PaymentResultData> {
   const response = await runAgenticTurn({
-    systemPrompt: "Call get_payment_status exactly once with the given paymentId.",
+    systemPrompt:
+      "Call get_payment_status exactly once with the given paymentId.",
     userContent: `get_payment_status arguments:\n${JSON.stringify({ paymentId })}`,
     tool: buildCommerceMcpTool(),
     autoApprove: false,
     forceToolName: "get_payment_status",
   });
 
-  const outcome = extractToolJsonResult<PaymentResultData>(response, "get_payment_status");
+  const outcome = extractToolJsonResult<PaymentResultData>(
+    response,
+    "get_payment_status",
+  );
   if (outcome.data === null) {
-    throw new Error(outcome.toolErrorMessage ?? "get_payment_status returned no data.");
+    throw new Error(
+      outcome.toolErrorMessage ?? "get_payment_status returned no data.",
+    );
   }
   return outcome.data;
 }

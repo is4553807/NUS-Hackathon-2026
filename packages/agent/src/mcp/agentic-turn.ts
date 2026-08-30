@@ -1,4 +1,8 @@
-import type { Response, ResponseInputItem, Tool } from "openai/resources/responses/responses.js";
+import type {
+  Response,
+  ResponseInputItem,
+  Tool,
+} from "openai/resources/responses/responses.js";
 
 import { agentConfig } from "../config.js";
 import { getOpenAiClient } from "../openai-client.js";
@@ -34,13 +38,21 @@ export interface AgenticTurnInput {
  * §2) when the caller has authorized auto-approval. Returns the final
  * response after all approvals in the chain are resolved.
  */
-export async function runAgenticTurn(input: AgenticTurnInput): Promise<Response> {
+export async function runAgenticTurn(
+  input: AgenticTurnInput,
+): Promise<Response> {
   const client = getOpenAiClient();
   let response = await client.responses.create({
     model: agentConfig.openaiModel,
     tools: [input.tool],
     ...(input.forceToolName !== undefined
-      ? { tool_choice: { type: "mcp" as const, server_label: input.tool.server_label, name: input.forceToolName } }
+      ? {
+          tool_choice: {
+            type: "mcp" as const,
+            server_label: input.tool.server_label,
+            name: input.forceToolName,
+          },
+        }
       : {}),
     input: [
       { role: "system", content: input.systemPrompt },
@@ -60,11 +72,13 @@ export async function runAgenticTurn(input: AgenticTurnInput): Promise<Response>
       );
     }
 
-    const approvalResponses: ResponseInputItem[] = approvalRequests.map((request) => ({
-      type: "mcp_approval_response",
-      approval_request_id: request.id,
-      approve: true,
-    }));
+    const approvalResponses: ResponseInputItem[] = approvalRequests.map(
+      (request) => ({
+        type: "mcp_approval_response",
+        approval_request_id: request.id,
+        approve: true,
+      }),
+    );
 
     response = await client.responses.create({
       model: agentConfig.openaiModel,

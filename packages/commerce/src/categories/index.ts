@@ -1,5 +1,6 @@
 import {
   CommerceDomain as DatabaseCommerceDomain,
+  MerchantStatus,
   ProductKind as DatabaseProductKind,
   type Prisma,
 } from "@visa-commerce/db";
@@ -69,6 +70,31 @@ export async function listCategories(
   const database = getCommerceDatabase(dependencies);
   const categories = await database.category.findMany({
     where: { active: true },
+    orderBy: [{ domain: "asc" }, { id: "asc" }],
+  });
+  return categories.map(toCategoryRecord);
+}
+
+/**
+ * Returns only categories that currently contain at least one active product
+ * from an active Merchant. The consumer Agent uses this live list instead of
+ * maintaining its own category enum, while the Merchant onboarding UI keeps
+ * using listCategories() so empty categories remain available for onboarding.
+ */
+export async function listPopulatedCategories(
+  dependencies: CommerceDependencies = {},
+): Promise<CategoryRecord[]> {
+  const database = getCommerceDatabase(dependencies);
+  const categories = await database.category.findMany({
+    where: {
+      active: true,
+      products: {
+        some: {
+          active: true,
+          merchant: { status: MerchantStatus.ACTIVE },
+        },
+      },
+    },
     orderBy: [{ domain: "asc" }, { id: "asc" }],
   });
   return categories.map(toCategoryRecord);

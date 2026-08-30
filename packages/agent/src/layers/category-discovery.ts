@@ -1,12 +1,9 @@
 import {
   resolveCategory,
+  type CatalogCategory,
   type ListCategories,
 } from "../category-resolution.js";
-import {
-  DEMO_CATEGORIES,
-  type DemoCategory,
-  type DraftUserIntent,
-} from "../domain-types.js";
+import type { AgentCategory, DraftUserIntent } from "../domain-types.js";
 import { buildRealIntent } from "../mcp/build-real-intent.js";
 import { callCommerceTool, withCommerceMcpClient } from "../mcp/mcp-client.js";
 import { composeCommerceSummary } from "../offer-summary.js";
@@ -26,7 +23,7 @@ interface RealSearchProduct {
 
 export interface DirectionCard {
   productId: string;
-  category: DemoCategory;
+  category: AgentCategory;
   name: string;
   description: string;
   images?: string[];
@@ -37,6 +34,66 @@ export interface ProvisionalShortlistItem {
   name: string;
   summary: string;
   images?: string[];
+}
+
+function normalize(value: string): string {
+  return value
+    .toLocaleLowerCase("en")
+    .replaceAll(/[^\p{L}\p{N}]+/gu, " ")
+    .trim();
+}
+
+function categoryRelevance(category: CatalogCategory, query: string): number {
+  const categoryText = normalize(
+    [
+      category.categoryId,
+      category.name,
+      category.slug,
+      ...category.aliases,
+    ].join(" "),
+  );
+  return normalize(query)
+    .split(" ")
+    .filter((token) => token.length > 2 && categoryText.includes(token)).length;
+}
+
+/** Selects at most three real categories for ambiguous discovery. Explicit
+ * model candidates win; otherwise matching catalog metadata is preferred,
+ * followed by a domain-diverse fallback for a truly open-ended request. */
+export function selectDiscoveryCategories(
+  draft: DraftUserIntent,
+  categories: CatalogCategory[],
+): AgentCategory[] {
+  if (draft.categoryCandidates.length > 0) {
+    const validIds = new Set(categories.map((category) => category.categoryId));
+    return draft.categoryCandidates
+      .filter((categoryId) => validIds.has(categoryId))
+      .slice(0, 3);
+  }
+
+  const ranked = categories
+    .map((category) => ({
+      category,
+      score: categoryRelevance(category, draft.productQuery),
+    }))
+    .filter(({ score }) => score > 0)
+    .sort((a, b) => b.score - a.score || b.category.level - a.category.level);
+  if (ranked.length > 0) {
+    return ranked.slice(0, 3).map(({ category }) => category.categoryId);
+  }
+
+  const selected: CatalogCategory[] = [];
+  for (const commerceDomain of [
+    "retail_goods",
+    "services_subscriptions",
+    "bookings",
+  ] as const) {
+    const category = categories.find(
+      (candidate) => candidate.commerceDomain === commerceDomain,
+    );
+    if (category !== undefined) selected.push(category);
+  }
+  return selected.slice(0, 3).map((category) => category.categoryId);
 }
 
 /**
@@ -50,23 +107,31 @@ export async function runCategoryDiscovery(
   draft: DraftUserIntent,
   listCategories: ListCategories,
 ): Promise<DirectionCard[]> {
-  const candidates: DemoCategory[] =
-    draft.categoryCandidates.length === 2
-      ? draft.categoryCandidates
-      : [...DEMO_CATEGORIES];
+  const categories = await listCategories();
+  const candidates = selectDiscoveryCategories(draft, categories);
+  const listCachedCategories: ListCategories = async () => categories;
 
   const perCategoryResults = await withCommerceMcpClient(async (client) => {
     const results: Array<{
-      category: DemoCategory;
+      category: AgentCategory;
       products: RealSearchProduct[];
     }> = [];
-    for (const category of candidates.slice(0, 2)) {
+    for (const category of candidates) {
       const resolvedCategory = await resolveCategory(
         category,
         draft.productQuery,
-        listCategories,
+        listCachedCategories,
       );
-      const intent = buildRealIntent(draft, resolvedCategory);
+      const intent = buildRealIntent(
+        {
+          ...draft,
+          productQuery:
+            draft.productQuery.trim().length > 0
+              ? draft.productQuery
+              : resolvedCategory.broadQuery,
+        },
+        resolvedCategory,
+      );
       const data = await callCommerceTool<{ products: RealSearchProduct[] }>(
         client,
         "search_products",
@@ -106,7 +171,7 @@ export async function runCategoryDiscovery(
 /** Mode 2a's non-blocking, real-data starting point. */
 export async function runProvisionalShortlist(
   draft: DraftUserIntent,
-  category: DemoCategory,
+  category: AgentCategory,
   listCategories: ListCategories,
 ): Promise<ProvisionalShortlistItem[]> {
   const resolvedCategory = await resolveCategory(

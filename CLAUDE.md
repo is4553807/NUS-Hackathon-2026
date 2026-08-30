@@ -8,11 +8,11 @@ Visa Commerce: a conversational commerce platform where one consumer-facing AI a
 
 ## Doc map
 
-| File | Answers |
-|---|---|
-| `docs/AGENT_SPEC.md` | How the agent thinks: intent extraction, mode detection, ranking/tiebreak logic, clarification, MCP call rules, merchant interface shapes. |
-| `docs/CONSUMER_UX.md` | How it looks: screens, components, copy, slash commands. |
-| `docs/TASKS.md` | Build checklist, in order, with exit criteria. |
+| File                  | Answers                                                                                                                                    |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `docs/AGENT_SPEC.md`  | How the agent thinks: intent extraction, mode detection, ranking/tiebreak logic, clarification, MCP call rules, merchant interface shapes. |
+| `docs/CONSUMER_UX.md` | How it looks: screens, components, copy, slash commands.                                                                                   |
+| `docs/TASKS.md`       | Build checklist, in order, with exit criteria.                                                                                             |
 
 **Surface:** web chat, built and demoed first. Telegram is a later phase — see `docs/AGENT_SPEC.md` header note on why this isn't blocked by Sangyoon's integration doc mentioning Telegram.
 

@@ -54,6 +54,7 @@ export async function callCommerceTool<T>(
   const textBlock = Array.isArray(result.content)
     ? result.content.find((block) => "text" in block)
     : undefined;
-  const text = textBlock !== undefined && "text" in textBlock ? textBlock.text : "{}";
+  const text =
+    textBlock !== undefined && "text" in textBlock ? textBlock.text : "{}";
   return JSON.parse(text) as T;
 }

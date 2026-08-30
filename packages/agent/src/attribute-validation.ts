@@ -6,13 +6,18 @@ export interface CategoryAttributeSchema {
 
 /** Injected by the caller (apps/api), same pattern as ListCategories — keeps
  * this package free of any direct Postgres dependency (CLAUDE.md rule 11). */
-export type GetCategorySchema = (categoryId: string) => Promise<CategoryAttributeSchema | null>;
+export type GetCategorySchema = (
+  categoryId: string,
+) => Promise<CategoryAttributeSchema | null>;
 
 function normalizeKey(value: string): string {
   return value.toLocaleLowerCase("en").replaceAll(/[^a-z0-9]+/g, "");
 }
 
-function collectKnownNames(schema: CategoryAttributeSchema, into: Set<string>): void {
+function collectKnownNames(
+  schema: CategoryAttributeSchema,
+  into: Set<string>,
+): void {
   for (const [name, definition] of Object.entries(schema.attributes)) {
     into.add(normalizeKey(name));
     for (const alias of definition.aliases ?? []) {
@@ -36,8 +41,12 @@ async function knownNamesForDomain(
   getCategorySchema: GetCategorySchema,
 ): Promise<Set<string>> {
   const categories = await listCategories();
-  const inDomain = categories.filter((c) => c.commerceDomain === commerceDomain);
-  const schemas = await Promise.all(inDomain.map((c) => getCategorySchema(c.categoryId)));
+  const inDomain = categories.filter(
+    (c) => c.commerceDomain === commerceDomain,
+  );
+  const schemas = await Promise.all(
+    inDomain.map((c) => getCategorySchema(c.categoryId)),
+  );
   const known = new Set<string>();
   for (const schema of schemas) {
     if (schema !== null) collectKnownNames(schema, known);
@@ -63,7 +72,10 @@ async function knownNamesForDomain(
  * "hard constraints are never LLM-decided" true even when the LLM invents one.
  */
 export async function sanitizeRequiredAttributes(
-  category: { commerceDomain: CatalogCategory["commerceDomain"]; categoryId: string | null },
+  category: {
+    commerceDomain: CatalogCategory["commerceDomain"];
+    categoryId: string | null;
+  },
   requiredAttributes: Record<string, string>,
   listCategories: ListCategories,
   getCategorySchema: GetCategorySchema,
@@ -76,10 +88,16 @@ export async function sanitizeRequiredAttributes(
     const schema = await getCategorySchema(category.categoryId);
     if (schema !== null) collectKnownNames(schema, knownNames);
   } else {
-    knownNames = await knownNamesForDomain(category.commerceDomain, listCategories, getCategorySchema);
+    knownNames = await knownNamesForDomain(
+      category.commerceDomain,
+      listCategories,
+      getCategorySchema,
+    );
   }
 
   return Object.fromEntries(
-    Object.entries(requiredAttributes).filter(([key]) => knownNames.has(normalizeKey(key))),
+    Object.entries(requiredAttributes).filter(([key]) =>
+      knownNames.has(normalizeKey(key)),
+    ),
   );
 }

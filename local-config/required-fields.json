@@ -1,8 +1,14 @@
 {
-  "electronics": {
+  "*": {
     "required": ["budgetMax"]
   },
-  "professional_services": {
-    "required": ["budgetMax"]
+  "retail_goods.apparel.shoes": {
+    "required": ["budgetMax", "size"]
+  },
+  "retail_goods.electronics.smartphones": {
+    "required": ["budgetMax", "storage"]
+  },
+  "bookings.activities": {
+    "required": ["budgetMax", "date"]
   }
 }

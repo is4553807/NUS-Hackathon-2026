@@ -1,7 +1,12 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
-import type { DemoCategory, DraftUserIntent, Mode, ResolvedUserIntent } from "../domain-types.js";
+import type {
+  AgentCategory,
+  DraftUserIntent,
+  Mode,
+  ResolvedUserIntent,
+} from "../domain-types.js";
 
 interface RequiredFieldsConfig {
   [category: string]: { required: string[] };
@@ -19,16 +24,29 @@ function loadRequiredFieldsConfig(): RequiredFieldsConfig {
 }
 
 function fieldValue(intent: DraftUserIntent, field: string): unknown {
+  if (field in intent.requiredAttributes) {
+    return intent.requiredAttributes[field];
+  }
   return (intent as unknown as Record<string, unknown>)[field];
 }
 
-function missingRequiredFields(category: DemoCategory, intent: DraftUserIntent): string[] {
+function missingRequiredFields(
+  category: AgentCategory,
+  intent: DraftUserIntent,
+): string[] {
   const config = loadRequiredFieldsConfig();
-  const required = config[category]?.required ?? [];
-  return required.filter((field) => fieldValue(intent, field) === undefined);
+  const required = config[category]?.required ??
+    config["*"]?.required ?? ["budgetMax"];
+  return required.filter((field) => {
+    const value = fieldValue(intent, field);
+    return value === undefined || value === null || value === "";
+  });
 }
 
-function toResolvedIntent(category: DemoCategory, intent: DraftUserIntent): ResolvedUserIntent {
+function toResolvedIntent(
+  category: AgentCategory,
+  intent: DraftUserIntent,
+): ResolvedUserIntent {
   if (intent.budgetMax === undefined) {
     throw new Error("Cannot resolve an intent without budgetMax.");
   }
@@ -46,7 +64,7 @@ function toResolvedIntent(category: DemoCategory, intent: DraftUserIntent): Reso
  * domain-types.ts for why that structurally blocks tool access before Mode 1.
  */
 export function resolveMode(intent: DraftUserIntent): Mode {
-  if (intent.categoryCandidates.length === 0 || intent.categoryCandidates.length === 2) {
+  if (intent.categoryCandidates.length !== 1) {
     return { mode: "category_discovery" };
   }
 

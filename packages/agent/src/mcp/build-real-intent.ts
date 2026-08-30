@@ -14,7 +14,7 @@ import type { DraftUserIntent } from "../domain-types.js";
 export interface RealUserIntentPayload {
   intentId: string;
   query: string;
-  commerceDomain: "retail_goods" | "services_subscriptions";
+  commerceDomain: "retail_goods" | "services_subscriptions" | "bookings";
   categoryId: string | null;
   budgetMax: number;
   currency: "SGD";
@@ -44,12 +44,23 @@ export const DISCOVERY_PLACEHOLDER_BUDGET = 1_000_000;
  */
 const DEMO_DELIVERY_LOCATION = "Singapore";
 
+function toWireDeadline(value: string | undefined): string | null {
+  if (value === undefined) return null;
+  if (/^\d{4}-\d{2}-\d{2}$/u.test(value)) {
+    return `${value}T23:59:59.999Z`;
+  }
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? value : parsed.toISOString();
+}
+
 export function buildRealIntent(
   draft: DraftUserIntent,
   resolvedCategory: ResolvedCategory,
   options: { intentId?: string; budgetMax?: number } = {},
 ): RealUserIntentPayload {
-  const deadline = draft.deliveryDeadline ?? draft.scheduleDeadline ?? null;
+  const deadline = toWireDeadline(
+    draft.deliveryDeadline ?? draft.scheduleDeadline,
+  );
   return {
     intentId: options.intentId ?? randomUUID(),
     // packages/commerce/src/catalog/search.ts requires every token in this
@@ -59,7 +70,8 @@ export function buildRealIntent(
     query: draft.productQuery,
     commerceDomain: resolvedCategory.commerceDomain,
     categoryId: resolvedCategory.categoryId,
-    budgetMax: options.budgetMax ?? draft.budgetMax ?? DISCOVERY_PLACEHOLDER_BUDGET,
+    budgetMax:
+      options.budgetMax ?? draft.budgetMax ?? DISCOVERY_PLACEHOLDER_BUDGET,
     currency: "SGD",
     quantity: draft.quantity,
     brandPreferences: [],
