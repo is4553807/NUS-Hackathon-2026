@@ -20,6 +20,7 @@ RUN pnpm install --frozen-lockfile
 
 COPY tsconfig.base.json ./
 COPY apps/api apps/api
+COPY local-config local-config
 COPY packages/agent packages/agent
 COPY packages/contracts packages/contracts
 COPY packages/db packages/db
