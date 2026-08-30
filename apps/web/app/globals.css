@@ -3,16 +3,27 @@
 :root {
   color-scheme: light;
   --ink: #12141c;
+  --ink-soft: #526078;
   --paper: #f6f7fa;
+  --canvas: #f5f7fb;
   --navy: #1d2b53;
+  --navy-light: #1a2a52;
+  --blue: #3157e8;
+  --blue-dark: #2344c5;
+  --blue-pale: #edf1ff;
   --signal-gold: #a9782f;
+  --gold: #e8b44c;
   --surface: #ffffff;
+  --surface-muted: #f8f9fc;
   --muted: #5b5f6b;
   --caution: #9b3b34;
   --line: #e4e6ed;
   --success: #13785b;
+  --success-pale: #e9f7f1;
   --warning: var(--caution);
+  --warning-pale: #fff5df;
   --danger: var(--caution);
+  --shadow: 0 16px 42px rgba(23, 38, 75, 0.08);
   font-family:
     "IBM Plex Sans",
     ui-sans-serif,
