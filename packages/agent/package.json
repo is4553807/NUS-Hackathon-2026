@@ -16,6 +16,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "1.30.0",
     "@visa-commerce/contracts": "workspace:*",
     "openai": "7.8.0",
     "zod": "4.5.2"
