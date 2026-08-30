@@ -1,0 +1,16 @@
+.git
+.github
+.next
+.turbo
+.cache
+coverage
+dist
+build
+node_modules
+**/node_modules
+**/dist
+*.log
+.env
+.env.*
+!.env.example
+.DS_Store
