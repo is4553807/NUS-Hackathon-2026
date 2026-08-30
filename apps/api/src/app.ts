@@ -1,6 +1,8 @@
+import cors from "@fastify/cors";
 import Fastify, { type FastifyInstance } from "fastify";
 
 import { registerApiErrorHandler } from "./http/error-handler.js";
+import { createAgentRoutes } from "./routes/agent.js";
 import { createCategoriesRoutes } from "./routes/categories.js";
 import { healthRoutes } from "./routes/health.js";
 import { intentsRoutes } from "./routes/intents.js";
@@ -36,9 +38,18 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
 
   registerApiErrorHandler(app);
 
+  // The web client (apps/web) runs on a different origin/port in dev, so the
+  // browser sends a CORS preflight before every POST — with no CORS plugin
+  // registered that OPTIONS request 404s and every agent chat call fails
+  // before it ever reaches a route handler.
+  void app.register(cors, {
+    origin: (process.env.WEB_ORIGIN ?? "http://localhost:3000").split(","),
+  });
+
   void app.register(healthRoutes);
   void app.register(usersRoutes, { prefix: "/v1/users" });
   void app.register(intentsRoutes, { prefix: "/v1/intents" });
+  void app.register(createAgentRoutes(commerceServices), { prefix: "/v1/agent" });
   void app.register(createMerchantsRoutes(commerceServices), {
     prefix: "/v1/merchants",
   });

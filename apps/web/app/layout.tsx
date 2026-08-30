@@ -4,8 +4,8 @@ import type { ReactNode } from "react";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Visa Commerce Merchant Portal",
-  description: "Merchant catalog and inventory workspace for Visa x NUS 2026",
+  title: "Visa Commerce",
+  description: "Conversational commerce across participating merchants",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

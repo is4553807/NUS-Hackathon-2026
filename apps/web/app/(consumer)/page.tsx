@@ -1,3 +1,5 @@
+import ConsumerChatPage from "./chat/page";
+
 export default function ConsumerHomePage() {
-  return <main>Consumer Home - TODO</main>;
+  return <ConsumerChatPage />;
 }
