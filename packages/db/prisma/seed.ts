@@ -2338,135 +2338,141 @@ async function main(): Promise<void> {
   const prisma = getPrismaClient();
 
   try {
-    const result = await prisma.$transaction(async (transaction) => {
-      for (const category of categories) {
-        const { id, ...data } = category;
-        await transaction.category.upsert({
-          where: { id },
-          create: category,
-          update: data,
-        });
-      }
-      for (const schema of categorySchemas) {
-        const { id: _id, categoryId, version, ...data } = schema;
-        await transaction.categorySchema.upsert({
-          where: { categoryId_version: { categoryId, version } },
-          create: schema,
-          update: data,
-        });
-      }
-      for (const merchant of merchants) {
-        const { id, ...data } = merchant;
-        await transaction.merchant.upsert({
-          where: { id },
-          create: merchant,
-          update: data,
-        });
-      }
-      for (const product of products) {
-        const { id, ...data } = product;
-        await transaction.product.upsert({
-          where: { id },
-          create: product,
-          update: data,
-        });
-      }
-      for (const details of physicalGoodDetails) {
-        const { productId, ...data } = details;
-        await transaction.physicalGoodDetails.upsert({
-          where: { productId },
-          create: details,
-          update: data,
-        });
-      }
-      for (const details of digitalProductDetails) {
-        const { productId, ...data } = details;
-        await transaction.digitalProductDetails.upsert({
-          where: { productId },
-          create: details,
-          update: data,
-        });
-      }
-      for (const details of serviceDetails) {
-        const { productId, ...data } = details;
-        await transaction.serviceDetails.upsert({
-          where: { productId },
-          create: details,
-          update: data,
-        });
-      }
-      for (const details of bookingExperienceDetails) {
-        const { productId, ...data } = details;
-        await transaction.bookingExperienceDetails.upsert({
-          where: { productId },
-          create: details,
-          update: data,
-        });
-      }
-      for (const variant of variants) {
-        const { id, ...data } = variant;
-        await transaction.productVariant.upsert({
-          where: { id },
-          create: variant,
-          update: data,
-        });
-      }
-      for (const inventoryItem of inventory) {
-        const { id: _id, variantId, ...data } = inventoryItem;
-        await transaction.inventory.upsert({
-          where: { variantId },
-          create: inventoryItem,
-          update: data,
-        });
-      }
-      for (const policy of pricingPolicies) {
-        const { id: _id, productId, ...data } = policy;
-        await transaction.pricingPolicy.upsert({
-          where: { productId },
-          create: policy,
-          update: data,
-        });
-      }
-      for (const profile of importProfiles) {
-        const { id: _id, merchantId, name, ...data } = profile;
-        await transaction.merchantImportProfile.upsert({
-          where: { merchantId_name: { merchantId, name } },
-          create: profile,
-          update: data,
-        });
-      }
-      for (const paymentMethod of paymentMethods) {
-        const { id, ...data } = paymentMethod;
-        await transaction.paymentMethod.upsert({
-          where: { id },
-          create: paymentMethod,
-          update: data,
-        });
-      }
+    const result = await prisma.$transaction(
+      async (transaction) => {
+        for (const category of categories) {
+          const { id, ...data } = category;
+          await transaction.category.upsert({
+            where: { id },
+            create: category,
+            update: data,
+          });
+        }
+        for (const schema of categorySchemas) {
+          const { id: _id, categoryId, version, ...data } = schema;
+          await transaction.categorySchema.upsert({
+            where: { categoryId_version: { categoryId, version } },
+            create: schema,
+            update: data,
+          });
+        }
+        for (const merchant of merchants) {
+          const { id, ...data } = merchant;
+          await transaction.merchant.upsert({
+            where: { id },
+            create: merchant,
+            update: data,
+          });
+        }
+        for (const product of products) {
+          const { id, ...data } = product;
+          await transaction.product.upsert({
+            where: { id },
+            create: product,
+            update: data,
+          });
+        }
+        for (const details of physicalGoodDetails) {
+          const { productId, ...data } = details;
+          await transaction.physicalGoodDetails.upsert({
+            where: { productId },
+            create: details,
+            update: data,
+          });
+        }
+        for (const details of digitalProductDetails) {
+          const { productId, ...data } = details;
+          await transaction.digitalProductDetails.upsert({
+            where: { productId },
+            create: details,
+            update: data,
+          });
+        }
+        for (const details of serviceDetails) {
+          const { productId, ...data } = details;
+          await transaction.serviceDetails.upsert({
+            where: { productId },
+            create: details,
+            update: data,
+          });
+        }
+        for (const details of bookingExperienceDetails) {
+          const { productId, ...data } = details;
+          await transaction.bookingExperienceDetails.upsert({
+            where: { productId },
+            create: details,
+            update: data,
+          });
+        }
+        for (const variant of variants) {
+          const { id, ...data } = variant;
+          await transaction.productVariant.upsert({
+            where: { id },
+            create: variant,
+            update: data,
+          });
+        }
+        for (const inventoryItem of inventory) {
+          const { id: _id, variantId, ...data } = inventoryItem;
+          await transaction.inventory.upsert({
+            where: { variantId },
+            create: inventoryItem,
+            update: data,
+          });
+        }
+        for (const policy of pricingPolicies) {
+          const { id: _id, productId, ...data } = policy;
+          await transaction.pricingPolicy.upsert({
+            where: { productId },
+            create: policy,
+            update: data,
+          });
+        }
+        for (const profile of importProfiles) {
+          const { id: _id, merchantId, name, ...data } = profile;
+          await transaction.merchantImportProfile.upsert({
+            where: { merchantId_name: { merchantId, name } },
+            create: profile,
+            update: data,
+          });
+        }
+        for (const paymentMethod of paymentMethods) {
+          const { id, ...data } = paymentMethod;
+          await transaction.paymentMethod.upsert({
+            where: { id },
+            create: paymentMethod,
+            update: data,
+          });
+        }
 
-      return {
-        categories: await transaction.category.count({
-          where: { id: { in: categories.map(({ id }) => id as string) } },
-        }),
-        merchants: await transaction.merchant.count({
-          where: { id: { in: merchants.map(({ id }) => id as string) } },
-        }),
-        products: await transaction.product.count({
-          where: { id: { in: products.map(({ id }) => id as string) } },
-        }),
-        variants: await transaction.productVariant.count({
-          where: { id: { in: variants.map(({ id }) => id as string) } },
-        }),
-        inventory: await transaction.inventory.count({
-          where: { id: { in: inventory.map(({ id }) => id as string) } },
-        }),
-        paymentMethods: await transaction.paymentMethod.count({
-          where: {
-            id: { in: paymentMethods.map(({ id }) => id as string) },
-          },
-        }),
-      };
-    });
+        return {
+          categories: await transaction.category.count({
+            where: { id: { in: categories.map(({ id }) => id as string) } },
+          }),
+          merchants: await transaction.merchant.count({
+            where: { id: { in: merchants.map(({ id }) => id as string) } },
+          }),
+          products: await transaction.product.count({
+            where: { id: { in: products.map(({ id }) => id as string) } },
+          }),
+          variants: await transaction.productVariant.count({
+            where: { id: { in: variants.map(({ id }) => id as string) } },
+          }),
+          inventory: await transaction.inventory.count({
+            where: { id: { in: inventory.map(({ id }) => id as string) } },
+          }),
+          paymentMethods: await transaction.paymentMethod.count({
+            where: {
+              id: { in: paymentMethods.map(({ id }) => id as string) },
+            },
+          }),
+        };
+      },
+      {
+        maxWait: 10_000,
+        timeout: 120_000,
+      },
+    );
 
     console.log(
       `Seeded ${result.categories} categories, ${result.merchants} merchants, ` +
