@@ -30,8 +30,12 @@ function extractionSystemPrompt(categories: CatalogCategory[]): string {
     commerceDomain: category.commerceDomain,
   }));
 
+  const today = new Date().toISOString().slice(0, 10);
+
   return `You are the intent-extraction step of a conversational shopping agent for "Visa Commerce". \
 Read the full accumulated draft, the recent conversation, and the user's latest message. Return the complete updated draft intent, not a fragment extracted from the latest message alone.
+
+Today's date is ${today}. Resolve any relative or year-less date the user states (e.g. "September 5", "next Friday") against this date, not any other year — a bare month/day always means the next such date on or after today.
 
 Rules:
 - categoryCandidates may only contain exact categoryId values from the live Merchant catalog below. Never invent a category.

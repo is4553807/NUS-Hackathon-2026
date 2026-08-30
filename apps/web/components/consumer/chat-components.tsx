@@ -101,6 +101,27 @@ export function ImageCarousel({
   );
 }
 
+export function AppHeader() {
+  return (
+    <header className="flex items-center gap-3 border-b border-[var(--line)] bg-[var(--surface)] px-4 py-3.5">
+      <span
+        aria-hidden="true"
+        className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[var(--navy)] text-[13px] font-semibold text-[var(--gold)] ring-2 ring-[var(--blue-pale)]"
+      >
+        V
+      </span>
+      <div className="min-w-0">
+        <p className="text-[14px] font-semibold leading-tight text-[var(--ink)]">
+          Yoink
+        </p>
+        <p className="truncate text-[12px] leading-tight text-[var(--muted)]">
+          Conversational shopping, one recommendation at a time
+        </p>
+      </div>
+    </header>
+  );
+}
+
 /** CONSUMER_UX.md §3.1 */
 export function WelcomeMessage({
   onPickExample,
@@ -115,7 +136,7 @@ export function WelcomeMessage({
       <button
         type="button"
         onClick={() => onPickExample("Noise-cancelling headphones under $150")}
-        className="w-fit rounded-[14px] border border-[var(--line)] bg-[var(--surface)] px-4 py-2 text-sm text-[var(--muted)] hover:border-[var(--navy)] hover:text-[var(--navy)]"
+        className="w-fit rounded-[14px] border border-[var(--line)] bg-[var(--surface)] px-4 py-2 text-sm text-[var(--muted)] shadow-[0_1px_2px_rgba(16,27,55,0.04)] transition hover:-translate-y-px hover:border-[var(--blue)] hover:text-[var(--blue)] hover:shadow-[0_6px_16px_rgba(49,87,232,0.12)]"
       >
         Try: noise-cancelling headphones under $150
       </button>
@@ -145,7 +166,7 @@ export function ChatBubble({
   if (error) {
     return (
       <div className="flex justify-start">
-        <div className="max-w-[75%] rounded-r-[14px] border border-[var(--line)] border-l-[3px] border-l-[var(--caution)] bg-[var(--surface)] px-4 py-2.5 text-[15px] text-[var(--ink)]">
+        <div className="max-w-[75%] rounded-r-[14px] border border-[var(--line)] border-l-[3px] border-l-[var(--caution)] bg-[var(--surface)] px-4 py-2.5 text-[15px] text-[var(--ink)] shadow-[0_1px_2px_rgba(16,27,55,0.04)]">
           <span aria-hidden="true" className="mr-2 text-[var(--caution)]">
             △
           </span>
@@ -156,7 +177,7 @@ export function ChatBubble({
   }
   return (
     <div className="flex justify-start">
-      <div className="max-w-[75%] rounded-[14px] border border-[var(--line)] bg-[var(--surface)] px-4 py-2.5 text-[15px] text-[var(--ink)]">
+      <div className="max-w-[75%] rounded-[14px] border border-[var(--line)] bg-[var(--surface)] px-4 py-2.5 text-[15px] text-[var(--ink)] shadow-[0_1px_2px_rgba(16,27,55,0.04)]">
         {children}
       </div>
     </div>
@@ -183,7 +204,7 @@ export function DirectionCards({
           key={card.productId}
           type="button"
           onClick={() => onSelect(card.name)}
-          className="rounded-[14px] border border-[var(--line)] bg-[var(--surface)] p-4 text-left hover:border-[var(--navy)]"
+          className="rounded-[14px] border border-[var(--line)] bg-[var(--surface)] p-4 text-left shadow-[0_1px_2px_rgba(16,27,55,0.04)] transition hover:-translate-y-px hover:border-[var(--blue)] hover:shadow-[0_8px_20px_rgba(49,87,232,0.1)]"
         >
           <ImageCarousel images={card.images} alt={card.name} />
           <p className="text-sm font-medium text-[var(--ink)]">{card.name}</p>
@@ -210,7 +231,7 @@ export function ProvisionalShortlist({
   if (items.length === 0) return null;
   return (
     <section
-      className="rounded-[14px] border border-dashed border-[var(--line)] bg-transparent p-3"
+      className="rounded-[14px] border border-dashed border-[var(--line)] bg-[var(--surface-muted)] p-3"
       aria-label="Provisional shortlist"
     >
       <p className="mb-2 text-[12px] font-medium text-[var(--muted)]">
@@ -220,7 +241,7 @@ export function ProvisionalShortlist({
         {items.map((item) => (
           <article
             key={item.productId}
-            className="min-w-[220px] flex-1 rounded-[10px] border border-[var(--line)] bg-[var(--surface)] p-3 sm:min-w-0"
+            className="min-w-[220px] flex-1 rounded-[10px] border border-[var(--line)] bg-[var(--surface)] p-3 shadow-[0_1px_2px_rgba(16,27,55,0.04)] sm:min-w-0"
           >
             <ImageCarousel images={item.images} alt={item.name} />
             <p className="text-[13px] font-medium text-[var(--ink)]">
@@ -253,7 +274,7 @@ export function IntentChipRow({
           key={chip.field}
           onClick={() => onEdit(chip.field)}
           aria-label={`Edit ${chip.label}`}
-          className="rounded-full border border-[var(--line)] bg-[var(--surface)] px-3 py-1 text-[12px] font-medium text-[var(--navy)]"
+          className="rounded-full border border-[var(--blue-pale)] bg-[var(--blue-pale)] px-3 py-1 text-[12px] font-medium text-[var(--blue-dark)] transition hover:border-[var(--blue)]"
         >
           {chip.label} <span aria-hidden="true">· edit</span>
         </button>
@@ -277,7 +298,7 @@ export function ComparisonView({
 }) {
   return (
     <div className="flex flex-col gap-2 py-2">
-      <div className="rounded-[14px] border-2 border-[var(--signal-gold)] bg-[var(--surface)] p-4">
+      <div className="rounded-[14px] border-2 border-[var(--signal-gold)] bg-[var(--surface)] p-4 shadow-[0_12px_28px_rgba(169,120,47,0.12)]">
         <ImageCarousel
           images={winner.offer.images}
           alt={winner.offer.productName}
@@ -286,7 +307,7 @@ export function ComparisonView({
           <p className="text-[15px] font-semibold text-[var(--ink)]">
             {winner.offer.productName}
           </p>
-          <span className="rounded-full border border-[var(--signal-gold)] px-2 py-0.5 text-[11px] font-medium text-[var(--signal-gold)]">
+          <span className="rounded-full bg-[var(--gold)] px-2 py-0.5 text-[11px] font-medium text-white">
             Recommended
           </span>
         </div>
@@ -332,9 +353,9 @@ export function TransactionPreview({
   confirming: boolean;
 }) {
   return (
-    <div className="flex flex-col gap-3 rounded-[14px] border border-[var(--line)] bg-[var(--surface)] p-4">
+    <div className="flex flex-col gap-3 rounded-[14px] border border-[var(--line)] bg-[var(--surface)] p-4 shadow-[0_16px_36px_rgba(23,38,75,0.08)]">
       {priceChanged ? (
-        <p className="text-[12px] font-medium text-[var(--warning)]">
+        <p className="rounded-[8px] bg-[var(--warning-pale)] px-2.5 py-1.5 text-[12px] font-medium text-[var(--warning)]">
           Price updated — please confirm the new total.
         </p>
       ) : null}
@@ -357,7 +378,7 @@ export function TransactionPreview({
         type="button"
         onClick={onConfirm}
         disabled={confirming}
-        className="mt-1 rounded-[14px] bg-[var(--navy)] px-4 py-2.5 text-[14px] font-medium text-white disabled:opacity-60"
+        className="mt-1 rounded-[14px] bg-[var(--navy)] px-4 py-2.5 text-[14px] font-medium text-white transition hover:bg-[var(--navy-light)] disabled:opacity-60"
       >
         {confirming ? "Authorizing purchase…" : "Confirm & authorize"}
       </button>
@@ -375,7 +396,7 @@ export function PaymentResultView({
 }) {
   if (status === "authorized") {
     return (
-      <p className="py-2 text-[15px] font-medium text-[var(--ink)]">
+      <p className="rounded-[10px] bg-[var(--success-pale)] px-3 py-2.5 text-[15px] font-medium text-[var(--success)]">
         Payment authorized — {merchant ?? "the merchant"} is preparing your
         order.
       </p>
@@ -383,7 +404,7 @@ export function PaymentResultView({
   }
   if (status === "declined") {
     return (
-      <p className="py-2 text-[15px] font-medium text-[var(--danger)]">
+      <p className="rounded-[10px] bg-[var(--warning-pale)] px-3 py-2.5 text-[15px] font-medium text-[var(--danger)]">
         Payment declined. Try a different card or offer.
       </p>
     );

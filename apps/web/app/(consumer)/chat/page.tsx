@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import {
+  AppHeader,
   ChatBubble,
   ComparisonView,
   ConversationDivider,
@@ -339,8 +340,10 @@ export default function ConsumerChatPage() {
   }
 
   return (
-    <main className="mx-auto flex h-dvh max-w-2xl flex-col bg-[var(--paper)]">
-      <div className="flex flex-1 flex-col justify-end overflow-y-auto px-4 py-4">
+    <main className="mx-auto flex h-dvh max-w-2xl flex-col bg-gradient-to-b from-white to-[var(--canvas)] shadow-[0_0_60px_rgba(23,38,75,0.06)]">
+      <AppHeader />
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-4">
+        <div className="mt-auto flex flex-col">
         {turns.length === 0 ? (
           <WelcomeMessage onPickExample={(text) => void handleSend(text)} />
         ) : null}
@@ -419,17 +422,18 @@ export default function ConsumerChatPage() {
           {sending ? <SearchingStatus text="Thinking…" /> : null}
           <div ref={messagesEndRef} />
         </div>
+        </div>
       </div>
 
       <div className="relative border-t border-[var(--line)] bg-[var(--surface)] px-4 py-3 shadow-[0_-8px_24px_rgba(18,20,28,0.05)]">
         {showSlashMenu && filteredCommands.length > 0 ? (
-          <div className="absolute bottom-full left-4 mb-2 w-64 rounded-lg border border-[var(--line)] bg-[var(--surface)] shadow-lg">
+          <div className="absolute bottom-full left-4 mb-2 w-64 overflow-hidden rounded-[14px] border border-[var(--line)] bg-[var(--surface)] shadow-[0_16px_36px_rgba(23,38,75,0.14)]">
             {filteredCommands.map((c) => (
               <button
                 key={c.command}
                 type="button"
                 onClick={() => setInput(`${c.command} `)}
-                className="block w-full px-3 py-2 text-left text-[13px] hover:bg-[var(--paper)]"
+                className="block w-full px-3 py-2 text-left text-[13px] hover:bg-[var(--blue-pale)]"
               >
                 <span className="font-medium text-[var(--ink)]">
                   {c.command}
@@ -458,7 +462,7 @@ export default function ConsumerChatPage() {
           <button
             type="submit"
             disabled={sending}
-            className="rounded-[14px] bg-[var(--navy)] px-4 py-2.5 text-[14px] font-medium text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--navy)] focus-visible:ring-offset-2 disabled:opacity-60"
+            className="rounded-[14px] bg-[var(--navy)] px-4 py-2.5 text-[14px] font-medium text-white shadow-[0_4px_12px_rgba(29,43,83,0.25)] transition hover:bg-[var(--navy-light)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--navy)] focus-visible:ring-offset-2 disabled:opacity-60 disabled:shadow-none"
           >
             Send
           </button>
