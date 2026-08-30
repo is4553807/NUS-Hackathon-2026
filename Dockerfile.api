@@ -1,0 +1,36 @@
+FROM node:24-bookworm-slim
+
+WORKDIR /app
+
+ENV PNPM_HOME=/pnpm
+ENV PATH=$PNPM_HOME:$PATH
+
+RUN corepack enable
+
+# Copy workspace metadata first so pnpm installs and links every package used
+# by the API and applies the repository's dependency build-script policy.
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY apps/api/package.json apps/api/package.json
+COPY packages/agent/package.json packages/agent/package.json
+COPY packages/contracts/package.json packages/contracts/package.json
+COPY packages/db/package.json packages/db/package.json
+COPY packages/commerce/package.json packages/commerce/package.json
+
+RUN pnpm install --frozen-lockfile
+
+COPY tsconfig.base.json ./
+COPY apps/api apps/api
+COPY packages/agent packages/agent
+COPY packages/contracts packages/contracts
+COPY packages/db packages/db
+COPY packages/commerce packages/commerce
+
+RUN pnpm --filter @visa-commerce/api... build
+
+ENV NODE_ENV=production
+ENV API_HOST=0.0.0.0
+ENV API_PORT=4000
+
+EXPOSE 4000
+
+CMD ["node", "apps/api/dist/server.js"]
